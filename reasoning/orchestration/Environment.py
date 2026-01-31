@@ -1,11 +1,10 @@
 from typing import List, Dict
 from pydantic import BaseModel
-from reasoning.models.Bus import Bus
-from reasoning.models.Service import Service
-from reasoning.models.network_graph.StopNode import StopNode
-
+from reasoning.models.bus import Bus
+from reasoning.models.timetabling import Service
+from reasoning.models.network_graph import StopNode
 
 class Environment(BaseModel):
-    buses: Dict[str, Bus] # Reg plate - Bus
-    stops: Dict[str, StopNode] # ID - Stop
-    services: Dict[str, Service] # ID - Service
+    buses: Dict[int, Bus] # Reg plate - Bus
+    stops: Dict[int, StopNode] # ID - Stop
+    services: Dict[int, Service] # ID - Service

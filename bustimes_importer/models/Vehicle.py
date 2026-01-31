@@ -1,14 +1,14 @@
 from pydantic import BaseModel
 
-class Vehicle(BaseModel):
-    class VehicleType(BaseModel):
-        id: str
-        name: str
-        fuel: str
-        double_decker: bool
-        coach: bool
+class VehicleType(BaseModel):
+    id: int
+    name: str
+    fuel: str
+    double_decker: bool
+    coach: bool
 
-    id: str
+class Vehicle(BaseModel):
+    id: int
     reg: str
     vehicle_type: VehicleType
     withdrawn: bool

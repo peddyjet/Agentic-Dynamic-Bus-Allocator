@@ -1,7 +1,6 @@
 from typing import Optional, List
 from pydantic import BaseModel
-
-from reasoning.models.Trip import Trip
+from reasoning.models.timetabling import Trip
 
 
 class BaseBus(BaseModel):

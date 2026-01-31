@@ -1,5 +1,3 @@
-import json
-
 import requests
 from datetime import datetime
 from typing import List
@@ -25,7 +23,7 @@ class EnvironmentFactory:
         self._noc = national_operator_code
         self._uri = uri
         self._date = date
-        self.__formatted_time = self._date.strftime("%Y-%m-%-d")
+        self.__formatted_time = self._date.strftime("%Y-%m-%d")
 
         self._environment = construct_environment(self._get_vehicles(), self._get_trips())
         self._vehicle_journeys = self._get_vehicle_journeys()
@@ -38,7 +36,8 @@ class EnvironmentFactory:
         vehicles_raw = requests.get(self._uri + f"vehicles/?operator={self._noc}&limit=10000")
         vehicles_raw.raise_for_status()
         vehicles = vehicles_raw.json()["results"]
-        return TypeAdapter(list[Vehicle]).validate_python(vehicles)
+        vehicles_filtered = [v for v in vehicles if v["vehicle_type"] is not None and v["withdrawn"] is not False]
+        return TypeAdapter(list[Vehicle]).validate_python(vehicles_filtered)
 
     def _get_vehicle_journeys(self) -> List[VehicleJourney]:
         journeys = []
@@ -56,12 +55,14 @@ class EnvironmentFactory:
         trips = []
 
         trip_request_queue = [self._uri + f"trips/?limit=1000&operator={self._noc}&date={self.__formatted_time}"]
+        print(trip_request_queue)
         while len(trip_request_queue) > 0:
             url = trip_request_queue.pop()
             trips_raw = requests.get(url)
             trips_raw.raise_for_status()
             trips_json = trips_raw.json()
-            trips.extend(TypeAdapter(list[TripInstance]).validate_python(trips_json["results"]))
+            trips_filtered = [t for t in trips_json["results"] if t["service"]["id"] is not None]
+            trips.extend(TypeAdapter(list[TripInstance]).validate_python(trips_filtered))
 
             if trips_json["next"] is not None:
                 trip_request_queue.append(trips_json["next"])

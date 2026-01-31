@@ -1,10 +1,8 @@
 import datetime
-
 from dotenv import load_dotenv
 from camel.models import ModelFactory
 from camel.types import ModelPlatformType, ModelType
 from camel.configs import ChatGPTConfig
-
 from bustimes_importer.environment.EnvironmentFactory import EnvironmentFactory
 from reasoning.orchestration.AgentOrchestator import AgentOrchestrator
 

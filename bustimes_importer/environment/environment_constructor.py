@@ -1,7 +1,6 @@
 import json
-import numpy as np
 from datetime import datetime
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple
 from pydantic import BaseModel
 from bustimes_importer.models.TripInstance import TripInstance
 from bustimes_importer.models.Vehicle import Vehicle
@@ -15,7 +14,7 @@ with (open("bustimes_importer/data/additional_bus_specs.json", "r", encoding="ut
         ADDITIONAL_BUS_SPECS[bus["name"]] = bus
 
 class InternalCallingPoint(BaseModel):
-    stop: m.network_graph.StopNode.StopNode
+    stop: m.network_graph.StopNode
     seconds_to_travel: float
     timestamp: datetime
 
@@ -35,8 +34,8 @@ def construct_environment(vehicles : List[Vehicle], trip_instances : List[TripIn
         services=services
     )
 
-def __vehicle_to_bus(vehicle : Vehicle) -> m.Bus.Bus:
-    return m.Bus.Bus(
+def __vehicle_to_bus(vehicle : Vehicle) -> m.bus.Bus:
+    return m.bus.Bus(
         model = vehicle.vehicle_type.name,
         reg_plate = vehicle.reg,
         capacity = ADDITIONAL_BUS_SPECS[vehicle.vehicle_type.name]["capacity"],
@@ -51,17 +50,17 @@ def __vehicle_to_bus(vehicle : Vehicle) -> m.Bus.Bus:
 
 
 def __trip_instances_to_stops_and_services(instances : List[TripInstance]) -> Tuple[
-    Dict[str, m.network_graph.StopNode.StopNode],
-    Dict[str, m.Service.Service]]:
+    Dict[str, m.network_graph.StopNode],
+    Dict[str, m.timetabling.Service]]:
 
-    services : Dict[str, m.Service.Service] = {}
-    stops : Dict[str, m.network_graph.StopNode.StopNode]= {}
+    services : Dict[str, m.timetabling.Service] = {}
+    stops : Dict[str, m.network_graph.StopNode]= {}
 
     for instance in instances:
         service_ref = services.get(instance.service.id)
         if service_ref is None:
             services[instance.service.id] = (
-                m.Service.Service(
+                m.timetabling.Service(
                     id = instance.service.id,
                     route_id = instance.service.line_name,
                     trips = []))
@@ -74,14 +73,14 @@ def __trip_instances_to_stops_and_services(instances : List[TripInstance]) -> Tu
         for calling_point in stop_nodes:
             __consolidate_edges(calling_point.stop)
             calling_points.append(
-                m.Trip.Trip.CallingPoint(stop=calling_point.stop,
-                                         timestamp=calling_point.timestamp,
-                                         passenger_loadings = []
-                                         ))
+                m.timetabling.Trip.CallingPoint(stop=calling_point.stop,
+                                                timestamp=calling_point.timestamp,
+                                                passenger_loadings = []
+                                                ))
             if stops.get(calling_point.stop.id) is None:
                 stops[calling_point.stop.id] = calling_point.stop
 
-        trip = m.Trip.Trip(
+        trip = m.timetabling.Trip(
             service = services[instance.service.id],
             calling_points = calling_points,
             id = instance.id,
@@ -94,7 +93,7 @@ def __trip_instances_to_stops_and_services(instances : List[TripInstance]) -> Tu
 def __trip_times_to_stop_nodes(trip : TripInstance) -> List[InternalCallingPoint]:
     stop_nodes : List[InternalCallingPoint] = []
     for time in trip.times:
-        node = m.network_graph.StopNode.StopNode(id = time.id,
+        node = m.network_graph.StopNode(id = time.id,
                                                  name = time.stop.name,
                                                  latitude = time.stop.location[1],
                                                  longitude = time.stop.location[0],
@@ -121,12 +120,12 @@ def __create_edges_along_path(path : List[InternalCallingPoint]):
     for i in range(len(path) - 1):
         stop1 = path[i].stop
         stop2 = path[i + 1].stop
-        edge = m.network_graph.Edge.Edge(source = stop1, target = stop2, seconds_to_travel = path[i].seconds_to_travel)
+        edge = m.network_graph.Edge(source = stop1, target = stop2, seconds_to_travel = path[i].seconds_to_travel)
         stop1.edges.append(edge)
         stop2.edges.append(edge)
 
-def __consolidate_edges(stop : m.network_graph.StopNode.StopNode):
-    edge_dict : Dict[str, Tuple[m.network_graph.Edge.Edge, int]] = {} # Name, (Edge, Number of Consolidations)
+def __consolidate_edges(stop : m.network_graph.StopNode):
+    edge_dict : Dict[str, Tuple[m.network_graph.Edge, int]] = {} # Name, (Edge, Number of Consolidations)
     for edge in stop.edges:
         edge_name = edge.source.id + " -> " + edge.target.id
         edge_dict_entry = edge_dict.get(edge_name)

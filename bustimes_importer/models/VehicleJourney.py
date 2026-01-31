@@ -1,12 +1,12 @@
 from pydantic import BaseModel
 
-class VehicleJourney(BaseModel):
-    class Vehicle:
-        id: str
-        reg: str
+class VehicleJourneyVehicle(BaseModel):
+    id: int
+    reg: str
 
-    id: str
+class VehicleJourney(BaseModel):
+    id: int
     datetime : str
-    vehicle: Vehicle
+    vehicle: VehicleJourneyVehicle
     trip_id: str
     route_name: str
