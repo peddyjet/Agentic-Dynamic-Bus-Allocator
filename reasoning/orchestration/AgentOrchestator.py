@@ -1,9 +1,12 @@
 from camel.agents import ChatAgent
-from reasoning_agent.prompts.system_message import SYSTEM_MESSAGE
+from camel.models import BaseModelBackend
+from reasoning.orchestration.Environment import Environment
+from reasoning.prompts.system_message import SYSTEM_MESSAGE
 
-class CentralReasoningAgent:
+class AgentOrchestrator:
 
-    def __init__(self, model_factory):
+    def __init__(self, model_factory : BaseModelBackend, environment : Environment):
+        self.__environment = environment
         self.__model_factory = model_factory
         self.__agent = ChatAgent(
             system_message=SYSTEM_MESSAGE,
