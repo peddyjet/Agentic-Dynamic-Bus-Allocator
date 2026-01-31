@@ -1,0 +1,43 @@
+{
+  "buses": [{
+    "name": "Optare Solo",
+    "capacity": 52,
+    "length": 8.85,
+    "height": 2.75
+  },{
+    "name": "Dennis Trident Alexander ALX400",
+    "capacity": 77,
+    "length": 10.65,
+    "height": 4.237
+  }, {
+    "name": "Optare Solo SR",
+    "capacity": 48,
+    "length": 8.915,
+    "height": 2.885
+  }, {
+    "name": "Optare Tempo",
+    "capacity": 66,
+    "length": 11.6075,
+    "height": 3.03
+  }, {
+    "name": "Volvo B9TL Wright Eclipse Gemini",
+    "capacity": 88,
+    "length": 10.4,
+    "height": 4.395
+  }, {
+    "name": "Volvo B7TL Wright Eclipse Gemini",
+    "capacity": 88,
+    "length": 10.4,
+    "height": 4.395
+  }, {
+    "name": "Volvo B9TL Wright Eclipse Gemini 2",
+    "capacity": 88,
+    "length": 10.4,
+    "height": 4.395
+  },{
+    "name": "Optare Versa",
+    "capacity": 60,
+    "length": 10.74,
+    "height": 2.836
+  }]
+}

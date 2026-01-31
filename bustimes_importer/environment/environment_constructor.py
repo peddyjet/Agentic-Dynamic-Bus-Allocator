@@ -1,3 +1,4 @@
+import json
 import numpy as np
 from datetime import datetime
 from typing import List, Dict, Tuple, Optional
@@ -6,6 +7,12 @@ from bustimes_importer.models.TripInstance import TripInstance
 from bustimes_importer.models.Vehicle import Vehicle
 from reasoning.orchestration.Environment import Environment
 import reasoning.models as m
+
+with (open("bustimes_importer/data/additional_bus_specs.json", "r", encoding="utf-8") as f):
+    bus_specs = json.loads(f.read())["buses"]
+    ADDITIONAL_BUS_SPECS = {}
+    for bus in bus_specs:
+        ADDITIONAL_BUS_SPECS[bus["name"]] = bus
 
 class InternalCallingPoint(BaseModel):
     stop: m.network_graph.StopNode.StopNode
@@ -32,14 +39,14 @@ def __vehicle_to_bus(vehicle : Vehicle) -> m.Bus.Bus:
     return m.Bus.Bus(
         model = vehicle.vehicle_type.name,
         reg_plate = vehicle.reg,
-        capacity = 100, # TODO: find API with access to this data
+        capacity = ADDITIONAL_BUS_SPECS[vehicle.vehicle_type.name]["capacity"],
         power_mode = vehicle.vehicle_type.fuel,
-        length = 10, # TODO: find API with access to this data
+        length = ADDITIONAL_BUS_SPECS[vehicle.vehicle_type.name]["length"],
         double_deck = vehicle.vehicle_type.double_decker,
         coach = vehicle.vehicle_type.coach,
         faults = [],
         current_route = None,
-        kilometres_until_empty = 100 # TODO: find API with access to this data
+        height = ADDITIONAL_BUS_SPECS[vehicle.vehicle_type.name]["height"],
     )
 
 

@@ -10,10 +10,10 @@ class BaseBus(BaseModel):
     capacity: int
     power_mode: str # electric, hybrid, diesel or hydrogen
     length: float # in metres
+    height: float # in metres
     double_deck: bool
     coach: bool
 
 class Bus(BaseBus):
     faults : List[str] # Any problems detected with the bus which need addressing
     current_route : Optional[Trip]
-    kilometres_until_empty: int
