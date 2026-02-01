@@ -1,3 +1,5 @@
+from concurrent.futures import as_completed
+from concurrent.futures.thread import ThreadPoolExecutor
 import requests
 from datetime import datetime
 from typing import List
@@ -19,27 +21,35 @@ class EnvironmentFactory:
     England) uses the code "BRYL".
     """
 
-    def __init__(self, national_operator_code: str, date : datetime, uri : str = "https://bustimes.org/api/"):
+    def __init__(self, national_operator_code: str, date : datetime, uri : str = "https://bustimes.org/api/", log : bool = False):
         self._noc = national_operator_code
         self._uri = uri
         self._date = date
         self.__formatted_time = self._date.strftime("%Y-%m-%d")
+        self.log = log
 
-        self._environment = construct_environment(self._get_vehicles(), self._get_trips())
+        self._environment = construct_environment(self._get_vehicles(), self._get_trips(), date, log)
         self._vehicle_journeys = self._get_vehicle_journeys()
 
+        if self.log:
+            print("     Creating ground truths... (3g/4)")
         self._ground_truths = []
         for journey in self._vehicle_journeys:
             self._ground_truths.append((journey, self._environment.buses[journey.vehicle.id]))
 
     def _get_vehicles(self) -> List[Vehicle]:
+        if self.log:
+            print("     Fetching vehicles... (3a/4)")
         vehicles_raw = requests.get(self._uri + f"vehicles/?operator={self._noc}&limit=10000")
         vehicles_raw.raise_for_status()
         vehicles = vehicles_raw.json()["results"]
-        vehicles_filtered = [v for v in vehicles if v["vehicle_type"] is not None and v["withdrawn"] is not False]
+        vehicles_filtered = [v for v in vehicles if v["vehicle_type"] is not None and v["withdrawn"] is not True]
         return TypeAdapter(list[Vehicle]).validate_python(vehicles_filtered)
 
     def _get_vehicle_journeys(self) -> List[VehicleJourney]:
+        if self.log:
+            print("     Fetching vehicle journeys... (3f/4)")
+
         journeys = []
         for bus in self._environment.buses.keys():
             journeys_raw = requests.get(self._uri +
@@ -52,22 +62,39 @@ class EnvironmentFactory:
         return journeys
 
     def _get_trips(self) -> List[TripInstance]:
-        trips = []
+        if self.log:
+            print("     Fetching trips... (3b/4) [Note: This can take a while]")
+
+        trip_ids = []
 
         trip_request_queue = [self._uri + f"trips/?limit=1000&operator={self._noc}&date={self.__formatted_time}"]
-        print(trip_request_queue)
         while len(trip_request_queue) > 0:
             url = trip_request_queue.pop()
             trips_raw = requests.get(url)
             trips_raw.raise_for_status()
             trips_json = trips_raw.json()
-            trips_filtered = [t for t in trips_json["results"] if t["service"]["id"] is not None]
-            trips.extend(TypeAdapter(list[TripInstance]).validate_python(trips_filtered))
+            trip_ids.extend([t["id"] for t in trips_json["results"]])
 
             if trips_json["next"] is not None:
                 trip_request_queue.append(trips_json["next"])
 
-        return trips
+        # Because of how many requests need sending, threading is needed here.
+        with ThreadPoolExecutor(max_workers=15) as pool:
+            futures = [pool.submit(self._get_trip, t) for t in trip_ids]
+        results = []
+        for f in as_completed(futures):
+            results.append(f.result())
+
+        return [trip for trip in results if trip is not None]
+
+    def _get_trip(self, trip_id : int) -> TripInstance | None:
+        trip_raw = requests.get(self._uri + f"trips/{trip_id}")
+        trip_raw.raise_for_status()
+        trip_json = trip_raw.json()
+        if trip_json["service"]["id"] is None:
+            return None
+
+        return TypeAdapter(TripInstance).validate_python(trip_json)
 
     def get_environment(self):
         return self._environment

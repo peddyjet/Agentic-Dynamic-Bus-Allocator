@@ -18,7 +18,9 @@ class InternalCallingPoint(BaseModel):
     seconds_to_travel: float
     timestamp: datetime
 
-def construct_environment(vehicles : List[Vehicle], trip_instances : List[TripInstance]) -> Environment:
+def construct_environment(vehicles : List[Vehicle], trip_instances : List[TripInstance], date : datetime, log : bool = False) -> Environment:
+    if log:
+        print("     Converting vehicles to buses (3c/4)")
     buses = {}
     for vehicle in vehicles:
         if vehicle.withdrawn:
@@ -26,12 +28,28 @@ def construct_environment(vehicles : List[Vehicle], trip_instances : List[TripIn
 
         buses[vehicle.id] = __vehicle_to_bus(vehicle)
 
+
+    if log:
+        print("     Converting trips to stops and services... (3d/4)")
     stops, services = __trip_instances_to_stops_and_services(trip_instances)
 
+    if log:
+        print("     Decomposing trips (3d/4)")
+    trips = {}
+    for service in services.values():
+        for trip in service.trips:
+            trips[trip.id] = trip
+
+    starting_time = datetime(date.year, date.month, date.day, hour = 4, minute = 30, second = 0)
+
+    if log:
+        print("     Constructing Environment (3e/4)")
     return Environment(
         buses=buses,
         stops=stops,
-        services=services
+        services=services,
+        trips=trips,
+        current_time=starting_time
     )
 
 def __vehicle_to_bus(vehicle : Vehicle) -> m.bus.Bus:
@@ -44,17 +62,19 @@ def __vehicle_to_bus(vehicle : Vehicle) -> m.bus.Bus:
         double_deck = vehicle.vehicle_type.double_decker,
         coach = vehicle.vehicle_type.coach,
         faults = [],
-        current_route = None,
+        current_trip_id = None,
+        current_stop_id = None,
         height = ADDITIONAL_BUS_SPECS[vehicle.vehicle_type.name]["height"],
+        id = vehicle.id
     )
 
 
 def __trip_instances_to_stops_and_services(instances : List[TripInstance]) -> Tuple[
-    Dict[str, m.network_graph.StopNode],
-    Dict[str, m.timetabling.Service]]:
+    Dict[int, m.network_graph.StopNode],
+    Dict[int, m.timetabling.Service]]:
 
-    services : Dict[str, m.timetabling.Service] = {}
-    stops : Dict[str, m.network_graph.StopNode]= {}
+    services : Dict[int, m.timetabling.Service] = {}
+    stops : Dict[int, m.network_graph.StopNode]= {}
 
     for instance in instances:
         service_ref = services.get(instance.service.id)
@@ -62,7 +82,7 @@ def __trip_instances_to_stops_and_services(instances : List[TripInstance]) -> Tu
             services[instance.service.id] = (
                 m.timetabling.Service(
                     id = instance.service.id,
-                    route_id = instance.service.line_name,
+                    route_name = instance.service.line_name,
                     trips = []))
 
         stop_nodes = __trip_times_to_stop_nodes(instance)
@@ -100,10 +120,10 @@ def __trip_times_to_stop_nodes(trip : TripInstance) -> List[InternalCallingPoint
                                                  is_depot = False,
                                                  edges = [])
 
-        arrival = datetime.strptime(time.aimed_arrival_time, "%H:%M:%S")\
+        arrival = datetime.strptime(time.aimed_arrival_time, "%H:%M")\
             if time.aimed_arrival_time is not None else None
 
-        departure = datetime.strptime(time.aimed_departure_time, "%H:%M:%S") \
+        departure = datetime.strptime(time.aimed_departure_time, "%H:%M") \
             if time.aimed_departure_time is not None else None
 
         seconds_to_travel = ((departure - arrival).total_seconds()
@@ -127,7 +147,7 @@ def __create_edges_along_path(path : List[InternalCallingPoint]):
 def __consolidate_edges(stop : m.network_graph.StopNode):
     edge_dict : Dict[str, Tuple[m.network_graph.Edge, int]] = {} # Name, (Edge, Number of Consolidations)
     for edge in stop.edges:
-        edge_name = edge.source.id + " -> " + edge.target.id
+        edge_name = str(edge.source.id) + "-" + str(edge.target.id)
         edge_dict_entry = edge_dict.get(edge_name)
         if edge_dict_entry is None:
             edge_dict[edge_name] = (edge, 1)

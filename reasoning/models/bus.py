@@ -4,6 +4,7 @@ from reasoning.models.timetabling import Trip
 
 
 class BaseBus(BaseModel):
+    id: int
     model: str
     reg_plate: str
     capacity: int
@@ -15,4 +16,5 @@ class BaseBus(BaseModel):
 
 class Bus(BaseBus):
     faults : List[str] # Any problems detected with the bus which need addressing
-    current_route : Optional[Trip]
+    current_trip_id : Optional[int]
+    current_stop_id : Optional[int]
