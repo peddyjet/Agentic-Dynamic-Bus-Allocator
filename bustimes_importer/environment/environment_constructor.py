@@ -28,10 +28,9 @@ def construct_environment(vehicles : List[Vehicle], trip_instances : List[TripIn
 
         buses[vehicle.id] = __vehicle_to_bus(vehicle)
 
-
     if log:
         print("     Converting trips to stops and services... (3d/4)")
-    stops, services = __trip_instances_to_stops_and_services(trip_instances)
+    stops, services = __trip_instances_to_stops_and_services(trip_instances, date)
 
     if log:
         print("     Decomposing trips (3d/4)")
@@ -62,14 +61,14 @@ def __vehicle_to_bus(vehicle : Vehicle) -> m.bus.Bus:
         double_deck = vehicle.vehicle_type.double_decker,
         coach = vehicle.vehicle_type.coach,
         faults = [],
-        current_trip_id = None,
+        current_trip_id_queue = [],
         current_stop_id = None,
         height = ADDITIONAL_BUS_SPECS[vehicle.vehicle_type.name]["height"],
         id = vehicle.id
     )
 
 
-def __trip_instances_to_stops_and_services(instances : List[TripInstance]) -> Tuple[
+def __trip_instances_to_stops_and_services(instances : List[TripInstance], date : datetime) -> Tuple[
     Dict[int, m.network_graph.StopNode],
     Dict[int, m.timetabling.Service]]:
 
@@ -94,7 +93,10 @@ def __trip_instances_to_stops_and_services(instances : List[TripInstance]) -> Tu
             __consolidate_edges(calling_point.stop)
             calling_points.append(
                 m.timetabling.Trip.CallingPoint(stop=calling_point.stop,
-                                                timestamp=calling_point.timestamp,
+                                                timestamp=datetime(year=date.year, month=date.month, day=date.day,
+                                                                   hour=calling_point.timestamp.hour,
+                                                                   minute=calling_point.timestamp.minute,
+                                                                   second=calling_point.timestamp.second),
                                                 passenger_loadings = []
                                                 ))
             if stops.get(calling_point.stop.id) is None:
@@ -109,7 +111,9 @@ def __trip_instances_to_stops_and_services(instances : List[TripInstance]) -> Tu
         services[instance.service.id].trips.append(trip)
 
     return stops, services
-
+#TODO: Currently the stop graphs are disparate, and never intertwine. This needs fixing so interlining can occur.
+# Solving this will likely require finding stops with the same name and letting them share edges. This is not the cleanest
+# solution, however would solve the problem without too many performance penalties.
 def __trip_times_to_stop_nodes(trip : TripInstance) -> List[InternalCallingPoint]:
     stop_nodes : List[InternalCallingPoint] = []
     for time in trip.times:

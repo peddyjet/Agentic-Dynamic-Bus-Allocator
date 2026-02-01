@@ -7,7 +7,6 @@ from bustimes_importer.environment.EnvironmentFactory import EnvironmentFactory
 from cli import run_cli
 from reasoning.orchestration.AgentOrchestator import AgentOrchestrator
 
-
 # Create the methods for running the program on start
 def run_simulator(orchestrator : AgentOrchestrator):
     raise NotImplementedError("Not implemented in this version")
@@ -39,7 +38,7 @@ def main():
 
     # Create the agent orchestrator
     print("Loading Orchestrator... (4/4)")
-    orchestrator = AgentOrchestrator(model, environment, True)
+    orchestrator = AgentOrchestrator(model, environment)
 
     print("Loading finished!\n")
     while True:

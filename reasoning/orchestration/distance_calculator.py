@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 import numpy as np
 from reasoning.models.network_graph import StopNode, Edge
 import heapq
@@ -11,10 +11,10 @@ def a_star(start : StopNode, goal : StopNode) -> Optional[List[Edge]]:
     heapq.heappush(frontier, (heuristic(start) + 0, (0, start))) # g + h : (g, node)
 
     explored = []
-    came_from = {}
+    came_from : Dict[StopNode, Edge] = {}
 
     while len(frontier) > 0:
-        g, node = heapq.heappop(frontier)
+        _, (g, node) = heapq.heappop(frontier)
         if node == goal:
             path = []
             retrace_node = node

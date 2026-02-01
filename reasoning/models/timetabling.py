@@ -1,6 +1,5 @@
 from datetime import datetime
 from typing import List
-
 import numpy as np
 from pydantic import BaseModel
 from reasoning.models.network_graph import StopNode
@@ -9,6 +8,18 @@ class Service(BaseModel):
     id: int
     route_name: str
     trips: List["Trip"]
+
+    def make_llm_friendly(self):
+        return LLMFriendlyService(
+            id=self.id,
+            route_name=self.route_name,
+            trips=list(map(lambda c: c.id, self.trips))
+        )
+
+class LLMFriendlyService(BaseModel):
+    id: int
+    route_name: str
+    trips: List[int]
 
 class Trip(BaseModel):
     class CallingPoint(BaseModel):

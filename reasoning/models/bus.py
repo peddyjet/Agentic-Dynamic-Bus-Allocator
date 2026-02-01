@@ -16,5 +16,5 @@ class BaseBus(BaseModel):
 
 class Bus(BaseBus):
     faults : List[str] # Any problems detected with the bus which need addressing
-    current_trip_id : Optional[int]
+    current_trip_id_queue : Optional[List[int]]
     current_stop_id : Optional[int]

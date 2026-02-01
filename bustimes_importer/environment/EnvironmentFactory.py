@@ -2,7 +2,7 @@ from concurrent.futures import as_completed
 from concurrent.futures.thread import ThreadPoolExecutor
 import requests
 from datetime import datetime
-from typing import List
+from typing import List, Dict, Optional
 from pydantic import TypeAdapter
 from bustimes_importer.environment.environment_constructor import construct_environment
 from bustimes_importer.models.TripInstance import TripInstance
@@ -65,7 +65,9 @@ class EnvironmentFactory:
         if self.log:
             print("     Fetching trips... (3b/4) [Note: This can take a while]")
 
-        trip_ids = []
+        # A slug of various points of data has been paired to the trip ID, to avoid duplicates.
+        trip_data_to_id : Dict[str, Optional[int]] = {}
+        create_trip_data_slug = lambda r: r["ticket_machine_code"] + r["start"] + r["end"] + r["headsign"]
 
         trip_request_queue = [self._uri + f"trips/?limit=1000&operator={self._noc}&date={self.__formatted_time}"]
         while len(trip_request_queue) > 0:
@@ -73,19 +75,24 @@ class EnvironmentFactory:
             trips_raw = requests.get(url)
             trips_raw.raise_for_status()
             trips_json = trips_raw.json()
-            trip_ids.extend([t["id"] for t in trips_json["results"]])
+            results = trips_json["results"]
+            for result in results:
+                data_slug = create_trip_data_slug(result)
+
+                if trip_data_to_id.get(data_slug) is None:
+                    trip_data_to_id[data_slug] = result["id"]
 
             if trips_json["next"] is not None:
                 trip_request_queue.append(trips_json["next"])
 
         # Because of how many requests need sending, threading is needed here.
         with ThreadPoolExecutor(max_workers=15) as pool:
-            futures = [pool.submit(self._get_trip, t) for t in trip_ids]
-        results = []
+            futures = [pool.submit(self._get_trip, t) for t in trip_data_to_id.values()]
+        final_results = []
         for f in as_completed(futures):
-            results.append(f.result())
+            final_results.append(f.result())
 
-        return [trip for trip in results if trip is not None]
+        return [trip for trip in final_results if trip is not None]
 
     def _get_trip(self, trip_id : int) -> TripInstance | None:
         trip_raw = requests.get(self._uri + f"trips/{trip_id}")
