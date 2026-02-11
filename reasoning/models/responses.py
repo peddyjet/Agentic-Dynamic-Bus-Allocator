@@ -1,11 +1,11 @@
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel
 
 class Allocation(BaseModel):
-    bus_id: int
-    bus_reg: str
-    trip_id: int
+    bus_id: Optional[int]
+    bus_reg: Optional[str]
+    trip_id: Optional[int]
     rationale: str
 
 class DefaultResponse(BaseModel):

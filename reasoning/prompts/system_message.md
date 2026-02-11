@@ -24,7 +24,7 @@ All outputs must be given in JSON, without any Markdown prefixes or suffixes. Th
   - By leaving `bus_id` and `bus_reg` as null, the bus trip will be cancelled. 
   - By leaving `trip_id` null whilst populating `bus_id` and `bus_reg`, the bus will be relieved of its current trip.
   - By filling in all three fields, the bus will be allocated to the trip. 
-  - `rationale` inside of `allocations` should be a couple sentences long, justifying the decision made.
+  - `rationale` inside of `allocations` should be a single, very concise sentence, justifying the decision made.
   - Please note that internally bus allocations are stored inside a queue, and by relieving a bus you will remove all trips inside that queue. If you wish to only relieve a bus of one service, please relieve the bus of all allocations, and then reallocate the trips the bus is still to run later in the array. 
   - The `rationale` on the high level JSON document should be four to five sentences long, giving a more nuanced justification on the steps and actions taken. 
   - Entries inside of `allocations` are always treated as instructions to be enacted immediately, so ensure you do not repeat yourself. The instructions are enacted in the order they appear in the list.

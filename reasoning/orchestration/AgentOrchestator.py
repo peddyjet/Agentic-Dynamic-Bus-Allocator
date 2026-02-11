@@ -5,7 +5,6 @@ from camel.agents import ChatAgent
 from camel.models import BaseModelBackend
 from camel.toolkits import FunctionTool
 from pydantic import TypeAdapter
-
 from reasoning.models.errors import ReprimandableError, FatalError
 from reasoning.models.responses import ErrorResponse, DefaultResponse, Allocation
 from reasoning.orchestration.Environment import Environment
