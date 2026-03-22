@@ -4,7 +4,7 @@ from typing import List, Dict, Tuple
 from pydantic import BaseModel
 from bustimes_importer.models.TripInstance import TripInstance
 from bustimes_importer.models.Vehicle import Vehicle
-from reasoning.orchestration.Environment import Environment
+from reasoning.environment.Environment import Environment
 import reasoning.models as m
 
 with (open("bustimes_importer/data/additional_bus_specs.json", "r", encoding="utf-8") as f):

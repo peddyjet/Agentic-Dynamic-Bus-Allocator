@@ -1,16 +1,18 @@
 from typing import List, Optional
-
 from pydantic import BaseModel
 
-class Allocation(BaseModel):
-    bus_id: Optional[int]
-    bus_reg: Optional[str]
-    trip_id: Optional[int]
-    rationale: str
+from reasoning.models.incident import Incident
 
-class DefaultResponse(BaseModel):
-    allocations: List[Allocation]
-    rationale: str
 
-class ErrorResponse(BaseModel):
-    message: str
+class AllocationResponse(BaseModel):
+    trip_id : int
+    buses : List[int]
+    cancel : bool
+    rationale : str
+    report : Optional[str]
+    error: Optional[str]
+
+class IncidentResponse(BaseModel):
+    incident: Incident
+    error: Optional[str]
+    report: Optional[str]

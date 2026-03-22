@@ -15,7 +15,9 @@ class Environment(BaseModel):
     def find_buses_on_trips(self):
         organised_buses: Dict[int, List[Bus]] = {}
         for bus in self.buses.values():
-            trip_id = bus.current_trip_id_queue[0] if len(bus.current_trip_id_queue) > 0 else -1
+            if bus.current_trip_id_queue == None:
+                trip_id = -1
+            else: trip_id = bus.current_trip_id_queue[0] if len(bus.current_trip_id_queue) > 0 else -1
             if not organised_buses.get(trip_id):
                 organised_buses[trip_id] = []
 

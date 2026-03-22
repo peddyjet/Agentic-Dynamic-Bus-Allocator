@@ -26,17 +26,22 @@ class Trip(BaseModel):
         stop: StopNode
         timestamp: datetime
         passenger_loadings: List[float]
+        def average_pax(self):
+            return float(np.mean(self.passenger_loadings) if len(self.passenger_loadings) > 0 else 0)
 
     id: int
     service: Service
     calling_points: List[CallingPoint]
+
+    def average_passenger_loading(self):
+        averages = np.array(map(lambda c: c.average_pax(), self.calling_points))
+        return float(np.mean(averages) if len(averages) > 0 else 0)
     
     def make_llm_friendly(self):
         start_time = self.calling_points[0].timestamp.strftime("%H:%M:%S") \
             if len(self.calling_points) > 0 else (datetime(year=1970, month=1, day=1)).strftime("%H:%M:%S")
         end_time = self.calling_points[len(self.calling_points) - 1].timestamp.strftime("%H:%M:%S") \
             if len(self.calling_points) > 0 else (datetime(year=1970, month=1, day=1)).strftime("%H:%M:%S")
-
 
         return LLMFriendlyTrip(
             id=self.id,
@@ -48,7 +53,7 @@ class Trip(BaseModel):
             (stop_id=c.stop.id,
              stop_name=c.stop.name,
              timestamp=c.timestamp.strftime("%H:%M:%S"),
-             average_passenger_load=float(np.mean(c.passenger_loadings) if len(c.passenger_loadings) > 0 else 0)
+             average_passenger_load=c.average_pax()
              ), self.calling_points))
         )
 
@@ -65,7 +70,6 @@ class LLMFriendlyTrip(BaseModel):
     start_time: str
     end_time: str
     calling_points: List[CallingPoint]
-
 
 Service.model_rebuild()
 Trip.model_rebuild()

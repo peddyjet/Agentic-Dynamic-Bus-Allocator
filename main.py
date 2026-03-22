@@ -1,17 +1,21 @@
 import datetime
+
+import asyncio
 from dotenv import load_dotenv
 from camel.models import ModelFactory
 from camel.types import ModelPlatformType, ModelType
 from camel.configs import ChatGPTConfig
 from bustimes_importer.environment.EnvironmentFactory import EnvironmentFactory
 from cli import run_cli
-from reasoning.orchestration.AgentOrchestator import AgentOrchestrator
+from reasoning.DynamicBusAllocationFactory import DynamicBusAllocationFactory
+from reasoning.agent_interface.ComputationalAgentInterface import ComputationalAgentInterface
+from reasoning.environment.Environment import Environment
 
 # Create the methods for running the program on start
-def run_simulator(orchestrator : AgentOrchestrator):
+def run_simulator(cai : ComputationalAgentInterface, environment : Environment):
     raise NotImplementedError("Not implemented in this version")
 
-def main():
+async def main():
     print("Loading Dotenv... (1/4)")
     load_dotenv()
 
@@ -37,21 +41,22 @@ def main():
     gt = environment_factory.get_ground_truths()
 
     # Create the agent orchestrator
-    print("Loading Orchestrator... (4/4)")
-    orchestrator = AgentOrchestrator(model, environment)
+    print("Loading Reasoning System... (4/4)")
+    factory = DynamicBusAllocationFactory(model, environment)
+    cai = factory.construct_instance()
 
     print("Loading finished!\n")
     while True:
         choice = input("Please type 'cli' or 'simulator' to continue: ")
         if choice == "cli":
-            run_cli(orchestrator)
+            await run_cli(cai, environment)
             break
         if choice == "simulator":
-            run_simulator(orchestrator)
+            run_simulator(cai, environment)
             break
         print("Invalid option. Please try again.")
         print()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
