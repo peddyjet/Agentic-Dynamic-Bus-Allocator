@@ -15,4 +15,4 @@ class Incident(BaseModel):
         populate_by_name = True
 
 class TimeStampedIncident(Incident):
-    time : datetime
+    time : str

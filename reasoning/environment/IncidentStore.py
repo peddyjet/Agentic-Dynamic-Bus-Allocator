@@ -12,16 +12,24 @@ class IncidentStore:
     def add_incident(self, incident: TimeStampedIncident):
         self._incidents.append(incident)
 
-    def get_incidents(self, trip_id : Optional[int] = None, date: Optional[datetime] = None):
-        incidents = set(self._incidents)
+    def get_incidents(self, trip_id: Optional[int] = None, date: Optional[datetime] = None):
+        incidents = list(self._incidents)
 
         if trip_id is not None:
-            incidents = incidents.union(self._filter_by_trip_id(trip_id))
+            incidents.extend(self._filter_by_trip_id(trip_id))
 
         if date is not None:
-            incidents = incidents.union(self._filter_by_date(date))
+            incidents.extend(self._filter_by_date(date))
 
-        return list(incidents)
+        unique = []
+        seen = set()
+        for incident in incidents:
+            key = (incident.summary, incident.time)
+            if key not in seen:
+                seen.add(key)
+                unique.append(incident)
+
+        return unique
 
     def _filter_by_trip_id(self, trip_id : int):
         trips = []
@@ -40,7 +48,7 @@ class IncidentStore:
     def _filter_by_date(self, date : datetime):
         trips = []
         for incident in self._incidents:
-            if incident.time < date + timedelta(hours=incident.expiry):
+            if datetime.fromisoformat(incident.time) < date + timedelta(hours=incident.expiry):
                 trips.append(incident)
         return trips
 

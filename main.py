@@ -21,10 +21,11 @@ async def main():
 
     # Select what LLM you want to use as the central reasoning agent
     print("Loading Model... (2/4)")
+
     model = ModelFactory.create(
         model_platform=ModelPlatformType.OPENAI,
         model_type=ModelType.GPT_5_MINI,
-        model_config_dict=ChatGPTConfig().as_dict(),
+        model_config_dict=ChatGPTConfig().as_dict()
     )
 
     # If using the BusTimes API, you may use the following code snippet to generate the reasoning

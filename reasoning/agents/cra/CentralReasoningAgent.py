@@ -10,7 +10,7 @@ from reasoning.agents.prompts.cra_rejects import CRAReject
 from reasoning.agents.prompts.system_messages import SYSTEM_MESSAGES
 from reasoning.agents.tools.environment_tools import environment_tools, allocated_buses_tool
 from reasoning.models.agent_exposed_data import AgentExposedData
-from reasoning.models.inputs import CRAInput
+from reasoning.models.inputs import CRAInput, IncidentHandlingReferral
 
 
 class CentralReasoningAgent(QueueAgent):
@@ -23,32 +23,35 @@ class CentralReasoningAgent(QueueAgent):
                                              self.__allocate_bus_tool(),
                                              self.__log_incident_tool()]
         ), on_decided_step_handlers=[], name="CRA")
-        self.__environment = data.environment
-        self.__incidents = data.incident_store
+        self._environment = data.environment
+        self._incidents = data.incident_store
 
         # Events
         self.refer_asa = None
         self.refer_ihsa = None
 
     def allocate_bus(self, trip_ids: List[int], time: datetime):
+        self._log_message(f"Received allocation request for {trip_ids} at {time}")
         cra_input = CRAInput(content=f"[ALLOX] {" ".join(str(i) for i in trip_ids)}", time=time.isoformat())
         prompt = json.dumps(cra_input.model_dump())
-        future = asyncio.get_event_loop().create_future()
+        future = self._create_future()
         self._queue.put_nowait(("step", prompt, future))
         self._ensure_worker_running()
         return future
 
     def send_log(self, log : str, time: datetime, by_agent : bool = False):
+        self._log_message(f"Received log message: {log} at {time}")
         cra_input = CRAInput(content=f"[{'LOG' if not by_agent else 'REPORT'}] {log}", time=time.isoformat())
         prompt = json.dumps(cra_input.model_dump())
-        future = asyncio.get_event_loop().create_future()
+        future = self._create_future()
         self._queue.put_nowait(("step", prompt, future))
         self._ensure_worker_running()
         return future
 
     def reject(self, reason: CRAReject, trip_id: int):
+        self._log_message(f"Received rejection: {reason} for trip {trip_id}")
         name = str(reason).format(trip_id=trip_id)
-        future = asyncio.get_event_loop().create_future()
+        future = self._create_future()
         self._queue.put_nowait(("step", name, future))
         self._ensure_worker_running()
         return future
@@ -60,7 +63,8 @@ class CentralReasoningAgent(QueueAgent):
             Provides a list of all incidents that are in the incident store
             :return: every time-stamped incident in the incident store
             """
-            return self.__incidents.get_incidents()
+            self._log_message("Invoked incidents")
+            return self._incidents().get_incidents() or "no incidents found"
         return incidents
 
     def __allocate_bus_tool(self):
@@ -72,10 +76,10 @@ class CentralReasoningAgent(QueueAgent):
             :param notes: Additional context to pass to the Allocation Subagent
             :return Nothing if everything went well, otherwise an error message
             """
-
+            self._log_message(f"Invoked allocate_bus with trip_id {trip_id} and notes {notes}")
             err = self.refer_asa(trip_id, True, notes)
             if err is not None: return str(err).format(trip_id=trip_id)
-            return None
+            return "success"
         return allocate_bus
 
 
@@ -87,6 +91,7 @@ class CentralReasoningAgent(QueueAgent):
             :param incident: a concise description of the incident
             :return Nothing if everything went well, otherwise an error message
             """
-
-            return self.refer_ihsa(incident)
+            self._log_message(f"Invoked log_incident with incident {incident}")
+            self.refer_ihsa(IncidentHandlingReferral(incident=incident))
+            return "success"
         return log_incident

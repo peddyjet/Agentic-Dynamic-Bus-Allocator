@@ -27,7 +27,7 @@ def trip_info_tool(self):
         self._log_message("Invoked trip_info with param " + trip_id)
 
         try:
-            trip = self.__environment.trips.get(int(trip_id))
+            trip = self._environment().trips.get(int(trip_id))
 
             if trip is None:
                 raise IndexError(f"The trip id {trip_id} doesn't exist")
@@ -56,7 +56,7 @@ def service_info_tool(self):
         self._log_message("Invoked service_info with param " + service_id)
 
         try:
-            service = self.__environment.services.get(int(service_id))
+            service = self._environment().services.get(int(service_id))
 
             if service is None:
                 raise IndexError(f"The service id {service_id} doesn't exist")
@@ -89,7 +89,7 @@ def buses_tool(self):
         }[]
         """
         self._log_message("Invoked buses")
-        return list(self.__environment.buses.values())
+        return list(self._environment().buses.values())
 
     return buses
 
@@ -115,7 +115,7 @@ def allocated_buses_tool(self):
         }[]. If the key is set to -1, the bus is currently not operating any trip.
         """
         self._log_message("Invoked allocated buses")
-        return list(self.__environment.find_buses_on_trips())
+        return list(self._environment().find_buses_on_trips())
 
     return allocated_buses
 
@@ -128,7 +128,7 @@ def get_time_tool(self):
         :return: The current time of day
         """
         self._log_message("Invoked get_time")
-        return self.__environment.current_time.time().strftime("%H:%M:%S")
+        return self._environment().current_time.time().strftime("%H:%M:%S")
 
     return get_time
 
@@ -137,26 +137,15 @@ def future_trips_tool(self):
     @FunctionTool
     def future_trips(hour_of_day: int):
         """
-        Gets all trips in the future from now
+        Gets all trips from the hour specified which are in the future, to the end of that hour.
         :param hour_of_day: The hour of the day to search for trips on
-        :return: An object of type {
-              "id": int,
-              "service_id": int,
-              "route_name": string,
-              "start_time": string,
-              "end_time": string,
-              "calling_points": {
-                "stop_id": int,
-                "stop_name": string,
-                "timestamp": string,
-                "average_passenger_load": float,
-              }[]
+        :return: A list of trip IDs
         """
         self._log_message("Invoked future_trips with param " + str(hour_of_day))
-        all_trips = self.__environment.trips.values()
+        all_trips = self._environment().trips.values()
         return [
-            t.make_llm_friendly() for t in all_trips if t.calling_points[0].timestamp.time() >=
-                                                        self.__environment.current_time.time() and t.calling_points[
+            t.id for t in all_trips if t.calling_points[0].timestamp.time() >=
+                                                        self._environment().current_time.time() and t.calling_points[
                                                             0].timestamp.hour == hour_of_day
         ]
 
@@ -168,23 +157,12 @@ def trips_tool(self):
         """
         Gets all trips plus or minus one hour from the time specified
         :param hour_of_day: The hour of the day to search for trips around
-        :return: An object of type {
-              "id": int,
-              "service_id": int,
-              "route_name": string,
-              "start_time": string,
-              "end_time": string,
-              "calling_points": {
-                "stop_id": int,
-                "stop_name": string,
-                "timestamp": string,
-                "average_passenger_load": float,
-              }[]
+        :return: A list of trip IDs
         """
         self._log_message("Invoked trips with param " + str(hour_of_day))
-        all_trips = self.__environment.trips.values()
+        all_trips = self._environment().trips.values()
         return [
-            t.make_llm_friendly() for t in all_trips
+            t.id for t in all_trips
             if abs(t.calling_points[0].timestamp.hour - hour_of_day) <= 1
         ]
 
@@ -205,7 +183,7 @@ def calculate_distance_tool(self):
         self._log_message(f"Invoked calculate_distance between {stop_a_id} and {stop_b_id}")
 
         try:
-            stop_a = self.__environment.stops.get(int(stop_a_id))
+            stop_a = self._environment().stops.get(int(stop_a_id))
 
             if stop_a is None:
                 raise IndexError(f"The Stop A's ID {stop_a_id} doesn't exist")
@@ -213,7 +191,7 @@ def calculate_distance_tool(self):
             return f"Stop A's ID could not be found. Your input returned the error: {e}"
 
         try:
-            stop_b = self.__environment.stops.get(int(stop_b_id))
+            stop_b = self._environment().stops.get(int(stop_b_id))
 
             if stop_b is None:
                 raise IndexError(f"The Stop B's ID {stop_b_id} doesn't exist")

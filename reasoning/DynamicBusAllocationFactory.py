@@ -41,24 +41,27 @@ class DynamicBusAllocationFactory:
 
         ihsa_pool = (
             AgentPool[IncidentHandlingSubAgent, IncidentHandlingReferral](agents=ihsa_agents,
-                             step_function=lambda agent, props: agent.handle_incident(props.incident_referral)))
-
+                             step_function=lambda agent, props: agent.handle_incident(props.incident,
+                                                                                      time=self._agent_data.environment().current_time)))
 
         # Instantiate CAI
         cai = ComputationalAgentInterface(self._agent_data, asa_pool, ihsa_pool, cra)
+
+        # Create default step complete
+        step_complete_handler = self.__on_step_complete(cai)
 
         # Connect events
         ## CRA
         cra.refer_asa = cai._step_asa
         cra.refer_ihsa = cai._step_ihsa
-        cra.on_step_complete_handlers.append(lambda agent, response: cra._log_message(str(response)))
+        cra.on_step_complete_handlers.append(step_complete_handler)
 
         ## ASA
         for asa in asa_agents:
             asa.actuate_allox = cai._deploy_bus
             asa.cra_report = cai._cra_report
             asa.cancel_trip = cai._cancel_trip
-            asa.on_step_complete_handlers.append(lambda agent, response: asa._log_message(str(response)))
+            asa.on_step_complete_handlers.append(step_complete_handler)
 
         ## IHSA
         for ihsa in ihsa_agents:
@@ -67,6 +70,14 @@ class DynamicBusAllocationFactory:
             ihsa.remove_bus = cai._remove_bus
             ihsa.refer_asa = cai._step_asa
             ihsa.add_log = cai._add_log
-            ihsa.on_step_complete_handlers.append(lambda agent, response: ihsa._log_message(str(response)))
+            ihsa.on_step_complete_handlers.append(step_complete_handler)
 
         return cai
+
+    @staticmethod
+    def __on_step_complete(cai):
+        # noinspection PyProtectedMember
+        def res(agent, response):
+            agent._log_message(str(response))
+            cai.flush_delegation_requests()
+        return res

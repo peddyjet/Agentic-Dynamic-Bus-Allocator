@@ -36,6 +36,8 @@ async def run_cli(cai : ComputationalAgentInterface, environment : Environment):
     while True:
         if not freeze_time:
              environment.current_time += timedelta(minutes=10)
+             cai.allocate_relevant_trips(timedelta(hours=1))
+             await cai.wait_for_agents()
 
         time = environment.current_time.strftime("%H:%M")
         user_input = get_user_input(f"[{time}] > ")
@@ -55,7 +57,8 @@ async def run_cli(cai : ComputationalAgentInterface, environment : Environment):
         if args[0] == "log":
             new_input = get_user_input("[LOG] > ")
             print("Waiting for agent response...")
-            await cai.send_log(new_input)
+            cai.send_log(new_input)
+            await cai.wait_for_agents()
             continue
 
         if args[0] == "allox":
@@ -66,7 +69,8 @@ async def run_cli(cai : ComputationalAgentInterface, environment : Environment):
 
             allox = args[1:]
             print("Waiting for agent response...")
-            await cai.allocate_buses(list(int(i) for i in allox))
+            cai.allocate_buses(list(int(i) for i in allox))
+            await cai.wait_for_agents()
             continue
 
         if args[0] == "buses":

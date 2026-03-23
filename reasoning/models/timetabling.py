@@ -34,14 +34,28 @@ class Trip(BaseModel):
     calling_points: List[CallingPoint]
 
     def average_passenger_loading(self):
-        averages = np.array(map(lambda c: c.average_pax(), self.calling_points))
-        return float(np.mean(averages) if len(averages) > 0 else 0)
+        averages = np.array([c.average_pax() for c in self.calling_points], dtype=float)
+        return float(np.mean(averages) if averages.size > 0 else 0)
+
+    def start_time(self, as_date = False):
+        if as_date:
+            return self.calling_points[0].timestamp\
+            if len(self.calling_points) > 0 else (datetime(year=1970, month=1, day=1))
+        else:
+            return self.calling_points[0].timestamp.strftime("%H:%M:%S") \
+            if len(self.calling_points) > 0 else (datetime(year=1970, month=1, day=1)).strftime("%H:%M:%S")
+
+    def end_time(self, as_date = False):
+        if as_date:
+            return self.calling_points[len(self.calling_points) - 1].timestamp\
+            if len(self.calling_points) > 0 else (datetime(year=1970, month=1, day=1))
+        else:
+            return self.calling_points[len(self.calling_points) - 1].timestamp.strftime("%H:%M:%S") \
+                if len(self.calling_points) > 0 else (datetime(year=1970, month=1, day=1)).strftime("%H:%M:%S")
     
     def make_llm_friendly(self):
-        start_time = self.calling_points[0].timestamp.strftime("%H:%M:%S") \
-            if len(self.calling_points) > 0 else (datetime(year=1970, month=1, day=1)).strftime("%H:%M:%S")
-        end_time = self.calling_points[len(self.calling_points) - 1].timestamp.strftime("%H:%M:%S") \
-            if len(self.calling_points) > 0 else (datetime(year=1970, month=1, day=1)).strftime("%H:%M:%S")
+        start_time = self.start_time()
+        end_time = self.end_time()
 
         return LLMFriendlyTrip(
             id=self.id,

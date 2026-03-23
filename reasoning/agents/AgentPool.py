@@ -13,21 +13,22 @@ class AgentPool(Generic[T, Y]):
         self._step = step_function
 
     def step(self, prompt: Y):
-        threading.Thread(
-            target=self._worker_loop,
-            args=(prompt,),
-            daemon=True
-        ).start()
+        best_fit = None
+        best_fit_score = float('inf')
+        for agent in self._agents.values():
+            score = agent.queue_size()
+            if agent.is_working():
+                score += 1
 
-    def _worker_loop(self, prompt: Y):
-        while True:
-            for agent in self._agents.values():
-                if not agent.is_working():
-                    self._step(agent, prompt)
-                    return
+            if score < best_fit_score:
+                best_fit = agent
+                best_fit_score = score
 
-            # If no agent is available, don't wait whilst busy as it is futile.
-            time.sleep(0.05)
+        print(f"[POOL] decided on agent {best_fit.get_name()} with score {best_fit_score}")
+        self._step(best_fit, prompt)
 
     def demand_agent(self, agent_name : str):
         return self._agents[agent_name]
+
+    def any_working(self):
+        return any(agent.is_working() for agent in self._agents.values())
