@@ -9,10 +9,8 @@ class AllocationResponse(BaseModel):
     buses : List[int]
     cancel : bool
     rationale : str
-    report : Optional[str]
     error: Optional[str]
 
 class IncidentResponse(BaseModel):
     incident: Incident
     error: Optional[str]
-    report: Optional[str]

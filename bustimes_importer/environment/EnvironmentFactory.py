@@ -86,7 +86,7 @@ class EnvironmentFactory:
                 trip_request_queue.append(trips_json["next"])
 
         # Because of how many requests need sending, threading is needed here.
-        with ThreadPoolExecutor(max_workers=15) as pool:
+        with ThreadPoolExecutor(max_workers=12) as pool:
             futures = [pool.submit(self._get_trip, t) for t in trip_data_to_id.values()]
         final_results = []
         for f in as_completed(futures):

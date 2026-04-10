@@ -30,5 +30,8 @@ class AgentPool(Generic[T, Y]):
     def demand_agent(self, agent_name : str):
         return self._agents[agent_name]
 
+    def demand_all_agents(self):
+        return self._agents
+
     def any_working(self):
         return any(agent.is_working() for agent in self._agents.values())

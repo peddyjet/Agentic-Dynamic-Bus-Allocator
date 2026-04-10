@@ -7,32 +7,38 @@ def a_star(start : StopNode, goal : StopNode) -> Optional[List[Edge]]:
     def heuristic(this_node : StopNode) -> float:
         return np.sqrt((this_node.longitude - goal.longitude)**2 + (this_node.latitude - goal.latitude)**2)
 
+    counter = 0
     frontier = []
-    heapq.heappush(frontier, (heuristic(start) + 0, (0, start))) # g + h : (g, node)
+    heapq.heappush(frontier, (heuristic(start), counter, 0, start)) # f, tiebreak, g, node
 
-    explored = []
-    came_from : Dict[StopNode, Edge] = {}
+    explored : set = set()
+    came_from : Dict[int, Edge] = {}
 
     while len(frontier) > 0:
-        _, (g, node) = heapq.heappop(frontier)
-        if node == goal:
+        _, _, g, node = heapq.heappop(frontier)
+        if node.id == goal.id:
             path = []
             retrace_node = node
-            while retrace_node != start:
-                edge = came_from[retrace_node]
+            while retrace_node.id != start.id:
+                edge = came_from[retrace_node.id]
                 path.append(edge)
                 retrace_node = edge.source
 
             return path
 
-        explored.append(node)
-        edges = node.edges
-        for edge in edges:
-            if not edge in explored:
-                came_from[edge.target] = edge
+        if node.id in explored:
+            continue
+        explored.add(node.id)
+
+        for edge in node.edges:
+            if edge.target.id not in explored:
+                counter += 1
+                came_from[edge.target.id] = edge
                 heapq.heappush(frontier,
                                (heuristic(edge.target) + g + edge.seconds_to_travel,
-                                (g + edge.seconds_to_travel, edge.target)))
+                                counter,
+                                g + edge.seconds_to_travel,
+                                edge.target))
     return None
 
 def distance_calculator(start : StopNode, goal : StopNode) -> float:

@@ -1,6 +1,7 @@
 from datetime import timedelta
-from typing import List
+from typing import List, Dict
 import asyncio
+from reasoning.agents.QueueAgent import QueueAgent
 from reasoning.agents.AgentPool import AgentPool
 from reasoning.agents.asa.AllocationSubAgent import AllocationSubAgent
 from reasoning.agents.cra.CentralReasoningAgent import CentralReasoningAgent
@@ -146,8 +147,9 @@ class ComputationalAgentInterface:
 
     def _remove_bus(self, bus_id : int, trip_id : int):
         """
-            Removes a bus from passenger service, based off a decision made by an IHSA.
+            Removes a bus from a specific trip, based off a decision made by an IHSA.
             :param bus_id: The bus ID to relieve
+            :param trip_id: The trip ID to relieve the bus from
             :returns: None if the removal is valid, otherwise an error message.
         """
         bus = self._data.environment().buses.get(bus_id)
@@ -157,6 +159,20 @@ class ComputationalAgentInterface:
         if trip is None:
             return IHSAReject.TripDoesntExist
         bus.current_trip_id_queue.remove(trip_id)
+        return None
+
+    def _withdraw_bus(self, bus_id : int):
+        """
+            Removes a bus from passenger service, based off a decision made by an IHSA.
+            :param bus_id: The bus ID to relieve
+            :returns: None if the removal is valid, otherwise an error message.
+        """
+        bus = self._data.environment().buses.get(bus_id)
+        if bus is None:
+            return IHSAReject.BusDoesntExist
+        bus.current_trip_id_queue = []
+        bus.faults.append(self._data.environment().current_time.isoformat() +
+                          " Bus withdrawn by IHSA. Expires in 24 hours from the time of withdrawal.")
         return None
 
     def _cancel_trip(self, trip_id : int):
@@ -224,6 +240,17 @@ class ComputationalAgentInterface:
                     return ASAReject.CannotDeadrun, queued_trip_id
 
         return None, None
+
+    def get_system_status(self):
+        """
+        Returns the status of every agent in the system, with how many items they are currently working on.
+        :return a dictionary containing the status of each agent in the system, with how many items they are currently working on.
+        """
+
+        agents : Dict[str, QueueAgent] = \
+            {"cra": self._cra, **self._asa_pool.demand_all_agents(), **self._ihsa_pool.demand_all_agents()}
+
+        return {agent_name: agent.queue_size() for agent_name, agent in agents.items()}
 
     @staticmethod
     def __validate_distance(trip_a : Trip, trip_b : Trip, kmh : float = 32):

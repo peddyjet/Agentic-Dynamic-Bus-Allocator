@@ -6,14 +6,16 @@ from camel.models import ModelFactory
 from camel.types import ModelPlatformType, ModelType
 from camel.configs import ChatGPTConfig
 from bustimes_importer.environment.EnvironmentFactory import EnvironmentFactory
-from cli import run_cli
+from simulator.cli import run_cli
 from reasoning.DynamicBusAllocationFactory import DynamicBusAllocationFactory
 from reasoning.agent_interface.ComputationalAgentInterface import ComputationalAgentInterface
 from reasoning.environment.Environment import Environment
+from simulator.gui.MainWindow import MainWindow
+
 
 # Create the methods for running the program on start
 def run_simulator(cai : ComputationalAgentInterface, environment : Environment):
-    raise NotImplementedError("Not implemented in this version")
+    MainWindow.start(cai, environment)
 
 async def main():
     print("Loading Dotenv... (1/4)")

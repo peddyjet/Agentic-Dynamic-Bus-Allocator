@@ -144,7 +144,8 @@ def __create_edges_along_path(path : List[InternalCallingPoint]):
     for i in range(len(path) - 1):
         stop1 = path[i].stop
         stop2 = path[i + 1].stop
-        edge = m.network_graph.Edge(source = stop1, target = stop2, seconds_to_travel = path[i].seconds_to_travel)
+        seconds_to_travel = (path[i + 1].timestamp - path[i].timestamp).total_seconds()
+        edge = m.network_graph.Edge(source = stop1, target = stop2, seconds_to_travel = max(0.0, seconds_to_travel))
         stop1.edges.append(edge)
         stop2.edges.append(edge)
 

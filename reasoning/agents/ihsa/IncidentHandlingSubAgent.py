@@ -22,7 +22,10 @@ class IncidentHandlingSubAgent(QueueAgent):
                 e.trip_info_tool(self),
                 e.calculate_distance_tool(self),
                 e.trips_tool(self),
+                self.__withdraw_bus_tool(),
                 self.__allocate_bus_tool(),
+                self.__remove_bus_tool(),
+                self.__cancel_trip_tool()
             ]
         ), on_decided_step_handlers=[self.__on_step_complete], name=name, agent_response=IncidentResponse)
         self._environment = data.environment
@@ -32,6 +35,7 @@ class IncidentHandlingSubAgent(QueueAgent):
         self.cra_report = None
         self.cancel_trip = None
         self.remove_bus = None
+        self.withdraw_bus = None
         self.refer_asa = None
         self.add_log = None
 
@@ -51,8 +55,6 @@ class IncidentHandlingSubAgent(QueueAgent):
 
     def __on_step_complete(self, _, result : IncidentResponse):
         self.add_log(result.incident)
-        if result.report is not None:
-            self.cra_report(result.report)
 
 
     def __get_prompt(self, incident: str, time: datetime):
@@ -112,3 +114,19 @@ class IncidentHandlingSubAgent(QueueAgent):
             if err is not None: return str(err).format(bus_id=bus_id)
             return "Success"
         return remove_bus
+
+    def __withdraw_bus_tool(self):
+        @FunctionTool
+        def withdraw_bus(bus_id: int):
+            """
+            Withdraws a bus from the network for the rest of the day. This automatically relieves it from all its trips.
+
+            :param bus_id: ID of the bus to be withdrawn from the network.
+            :return: A generic success message if everything went well, otherwise an error message.
+            """
+
+            self._log_message(f"Invoked withdraw_bus with bus_id {bus_id}")
+            err = self.withdraw_bus(bus_id)
+            if err is not None: return str(err).format(bus_id=bus_id)
+            return "Success"
+        return withdraw_bus

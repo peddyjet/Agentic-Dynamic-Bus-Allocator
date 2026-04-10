@@ -26,7 +26,6 @@ class AllocationSubAgent(QueueAgent):
 
         # Events
         self.actuate_allox = None
-        self.cra_report = None
         self.cancel_trip = None
 
     def allocate_bus(self, trip_id: int, time: str, note=""):
@@ -54,9 +53,6 @@ class AllocationSubAgent(QueueAgent):
         )
 
     def __on_step_complete(self, _, result : AllocationResponse):
-        if result.report is not None:
-            self.cra_report(result.report)
-
         if result.cancel:
             error : Optional[ASAReject] = self.cancel_trip(result.trip_id)
             if error is not None:

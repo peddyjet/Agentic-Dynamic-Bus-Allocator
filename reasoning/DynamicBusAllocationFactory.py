@@ -68,6 +68,7 @@ class DynamicBusAllocationFactory:
             ihsa.cancel_trip = cai._cancel_trip
             ihsa.cra_report = cai._cra_report
             ihsa.remove_bus = cai._remove_bus
+            ihsa.withdraw_bus = cai._withdraw_bus
             ihsa.refer_asa = cai._step_asa
             ihsa.add_log = cai._add_log
             ihsa.on_step_complete_handlers.append(step_complete_handler)

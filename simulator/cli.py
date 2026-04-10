@@ -86,6 +86,7 @@ async def run_cli(cai : ComputationalAgentInterface, environment : Environment):
         if args[0] == "freeze":
             freeze_time = not freeze_time
             print(f"Time has been {'Frozen' if freeze_time else 'Unfrozen'}.")
+            continue
 
         if len(args) > 1 and args[0] == "trip":
             try:
