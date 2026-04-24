@@ -6,7 +6,7 @@ import heapq
 
 def a_star(start : StopNode, goal : StopNode) -> Optional[List[Edge]]:
     def heuristic(this_node : StopNode) -> float:
-        return np.sqrt((this_node.longitude - goal.longitude)**2 + (this_node.latitude - goal.latitude)**2)
+        return haversine((this_node.latitude, this_node.longitude), (goal.latitude, goal.longitude))
 
     counter = 0
     frontier = []
