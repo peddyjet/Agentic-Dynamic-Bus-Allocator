@@ -1,5 +1,5 @@
-import asyncio
 import json
+import random
 from datetime import datetime
 from typing import Optional
 from camel.agents import ChatAgent
@@ -20,7 +20,7 @@ class AllocationSubAgent(QueueAgent):
             system_message=SYSTEM_MESSAGES["asa"],
             model=model,
             tools=environment_tools(self)
-        ), on_decided_step_handlers=[self.__on_step_complete], name=name, agent_response=AllocationResponse)
+        ), on_decided_step_handlers=[self.__on_step_complete], name=name, agent_response=AllocationResponse, stateless=True)
         self._environment = data.environment
         self._incidents = data.incident_store
 
@@ -29,27 +29,25 @@ class AllocationSubAgent(QueueAgent):
         self.cancel_trip = None
 
     def allocate_bus(self, trip_id: int, time: str, note=""):
-        prompt = self.__get_prompt(trip_id, datetime.fromisoformat(time), note).model_dump_json()
         future = self._create_future()
-        self._queue.put_nowait(("step", prompt, future))
-        self._ensure_worker_running()
+        self._enqueue(("step", lambda: self.__get_prompt(trip_id, datetime.fromisoformat(time), note).model_dump_json(), future))
         return future
 
     def reject(self, reason: ASAReject, bus_id: int, trip_id: int, conflicting_trip_id: int | None = None):
-        name = str(reason).format(bus_id=bus_id, trip_id=trip_id, conflicting_trip_id=conflicting_trip_id)
-        future = self._create_future()
-        self._queue.put_nowait(("step", name, future))
-        self._ensure_worker_running()
-        return future
+        note = str(reason).format(bus_id=bus_id, trip_id=trip_id, conflicting_trip_id=conflicting_trip_id)
+        return self.allocate_bus(trip_id, self._environment().current_time.isoformat(), note)
 
     def __get_prompt(self, trip_id: int, time: datetime, note=""):
+        raw = self._environment().find_buses_on_trips()
+        buckets = [(k, random.sample(v, len(v))) for k, v in raw.items()]
+        random.shuffle(buckets)
         return AllocationContext(
             trip_id=trip_id,
             trip_info=self._environment().trips[trip_id].make_llm_friendly(),
             incidents=self._incidents().get_incidents(trip_id, time),
             note=note if note != "" else None,
             time=time.strftime("%H:%M"),
-            bus_dict=self._environment().find_buses_on_trips()
+            bus_dict=dict(buckets)
         )
 
     def __on_step_complete(self, _, result : AllocationResponse):

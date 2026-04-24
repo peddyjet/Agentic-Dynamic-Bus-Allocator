@@ -1,7 +1,10 @@
 from datetime import timedelta
 
+from events.EventNames import EventNames
+from events.event_bus import default_bus
 from reasoning.agent_interface.ComputationalAgentInterface import ComputationalAgentInterface
 from reasoning.environment.Environment import Environment
+from simulator.SimulationManager import SimulationManager
 
 
 def help_menu():
@@ -28,15 +31,20 @@ def get_user_input(prompt = ">"):
     return user_input
 
 async def run_cli(cai : ComputationalAgentInterface, environment : Environment):
-    freeze_time = False
+    try:
+        seed = int(input("Enter passenger generation seed [36]: ").strip() or "36")
+    except ValueError:
+        seed = 36
+    simulation_manager = SimulationManager(environment, cai, 600, seed=seed)
 
     print("\n=== Agentic DBA CLI ===")
     help_menu()
 
+    default_bus.subscribe(EventNames.LOG_MESSAGE, lambda source, message: print(f"[{source.upper()}] {message}"))
+
     while True:
-        if not freeze_time:
-             environment.current_time += timedelta(minutes=10)
-             cai.allocate_relevant_trips(timedelta(hours=1))
+        if not simulation_manager.is_paused():
+             simulation_manager.tick()
              await cai.wait_for_agents()
 
         time = environment.current_time.strftime("%H:%M")
@@ -84,8 +92,8 @@ async def run_cli(cai : ComputationalAgentInterface, environment : Environment):
             continue
 
         if args[0] == "freeze":
-            freeze_time = not freeze_time
-            print(f"Time has been {'Frozen' if freeze_time else 'Unfrozen'}.")
+            simulation_manager.toggle_pause()
+            print(f"Time has been {'Frozen' if simulation_manager.is_paused() else 'Unfrozen'}.")
             continue
 
         if len(args) > 1 and args[0] == "trip":

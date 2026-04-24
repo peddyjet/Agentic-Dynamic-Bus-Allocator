@@ -18,3 +18,5 @@ class Bus(BaseBus):
     faults : List[str] # Any problems detected with the bus which need addressing
     current_trip_id_queue : Optional[List[int]]
     current_stop_id : Optional[int]
+    delay_seconds : float = 0.0
+    current_passengers : float = 0.0

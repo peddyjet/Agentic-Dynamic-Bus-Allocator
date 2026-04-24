@@ -12,7 +12,7 @@ from reasoning.models.inputs import SimplifiedAllocationContext, IncidentHandlin
 
 class DynamicBusAllocationFactory:
     def __init__(self, ai_model : BaseModelBackend, environment : Environment,
-                 asa_pool_size : int = 4, ihsa_pool_size : int = 4):
+                 asa_pool_size : int = 4, ihsa_pool_size : int = 3):
         self._ai_model = ai_model
         self._agent_data = AgentExposedData(environment=environment,
                                             incident_store=IncidentStore(environment))
@@ -47,21 +47,18 @@ class DynamicBusAllocationFactory:
         # Instantiate CAI
         cai = ComputationalAgentInterface(self._agent_data, asa_pool, ihsa_pool, cra)
 
-        # Create default step complete
-        step_complete_handler = self.__on_step_complete(cai)
-
         # Connect events
         ## CRA
         cra.refer_asa = cai._step_asa
         cra.refer_ihsa = cai._step_ihsa
-        cra.on_step_complete_handlers.append(step_complete_handler)
+        cra.on_step_complete_handlers.append(self.__on_step_complete)
 
         ## ASA
         for asa in asa_agents:
             asa.actuate_allox = cai._deploy_bus
             asa.cra_report = cai._cra_report
             asa.cancel_trip = cai._cancel_trip
-            asa.on_step_complete_handlers.append(step_complete_handler)
+            asa.on_step_complete_handlers.append(self.__on_step_complete)
 
         ## IHSA
         for ihsa in ihsa_agents:
@@ -71,14 +68,11 @@ class DynamicBusAllocationFactory:
             ihsa.withdraw_bus = cai._withdraw_bus
             ihsa.refer_asa = cai._step_asa
             ihsa.add_log = cai._add_log
-            ihsa.on_step_complete_handlers.append(step_complete_handler)
+            ihsa.on_step_complete_handlers.append(self.__on_step_complete)
 
         return cai
 
     @staticmethod
-    def __on_step_complete(cai):
+    def __on_step_complete(agent, response):
         # noinspection PyProtectedMember
-        def res(agent, response):
-            agent._log_message(str(response))
-            cai.flush_delegation_requests()
-        return res
+        agent._log_message(str(response))

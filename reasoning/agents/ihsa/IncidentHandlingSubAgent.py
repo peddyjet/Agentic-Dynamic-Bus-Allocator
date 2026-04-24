@@ -1,4 +1,3 @@
-import asyncio
 import json
 from datetime import datetime
 from camel.agents import ChatAgent
@@ -27,7 +26,7 @@ class IncidentHandlingSubAgent(QueueAgent):
                 self.__remove_bus_tool(),
                 self.__cancel_trip_tool()
             ]
-        ), on_decided_step_handlers=[self.__on_step_complete], name=name, agent_response=IncidentResponse)
+        ), on_decided_step_handlers=[self.__on_step_complete], name=name, agent_response=IncidentResponse, stateless=True)
         self._environment = data.environment
         self._incidents = data.incident_store
 
@@ -39,31 +38,27 @@ class IncidentHandlingSubAgent(QueueAgent):
         self.refer_asa = None
         self.add_log = None
 
-    def handle_incident(self, incident: str, time: datetime):
-        prompt = self.__get_prompt(incident, time).model_dump_json()
+    def handle_incident(self, incident: str, time: datetime, note: str = ""):
         future = self._create_future()
-        self._queue.put_nowait(("step", prompt, future))
-        self._ensure_worker_running()
+        self._enqueue(("step", lambda: self.__get_prompt(incident, time, note).model_dump_json(), future))
         return future
 
-    def reject(self, reason: IHSAReject, bus_id: int, trip_id: int):
-        name = str(reason).format(bus_id=bus_id, trip_id=trip_id)
-        future = self._create_future()
-        self._queue.put_nowait(("step", name, future))
-        self._ensure_worker_running()
-        return future
+    def reject(self, reason: IHSAReject, bus_id: int, trip_id: int, incident: str):
+        note = str(reason).format(bus_id=bus_id, trip_id=trip_id)
+        return self.handle_incident(incident, self._environment().current_time, note)
 
     def __on_step_complete(self, _, result : IncidentResponse):
         self.add_log(result.incident)
 
 
-    def __get_prompt(self, incident: str, time: datetime):
+    def __get_prompt(self, incident: str, time: datetime, note: str = ""):
         return IncidentHandlingContext(
             incident=incident,
             services=list(map(lambda s: s.make_llm_friendly(), self._environment().services.values())),
             incidents=self._incidents().get_incidents(None, time),
             time=time.isoformat(),
-            bus_dict=self._environment().find_buses_on_trips()
+            bus_dict=self._environment().find_buses_on_trips(),
+            note=note if note != "" else None
         )
 
     def __allocate_bus_tool(self):

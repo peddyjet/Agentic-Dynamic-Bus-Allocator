@@ -26,6 +26,8 @@ class Trip(BaseModel):
         stop: StopNode
         timestamp: datetime
         passenger_loadings: List[float]
+        waiting_passengers: float = 0.0
+
         def average_pax(self):
             return float(np.mean(self.passenger_loadings) if len(self.passenger_loadings) > 0 else 0)
 

@@ -27,7 +27,7 @@ def icon_label(icon: Union[str, QIcon], text: str, color: str = None):
 def find_relevant_icon(name: str):
     upper = name.upper()
     if re.match("CRA", upper):
-        return "mdi.head-cog"
+        return "mdi.head-dots-horizontal"
     elif re.match("IHSA", upper):
         return "mdi.shield-alert"
     elif re.match("ASA", upper):

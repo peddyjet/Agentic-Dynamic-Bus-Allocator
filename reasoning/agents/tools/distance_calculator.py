@@ -1,5 +1,6 @@
 from typing import List, Optional, Dict
 import numpy as np
+from haversine import haversine
 from reasoning.models.network_graph import StopNode, Edge
 import heapq
 
@@ -43,4 +44,7 @@ def a_star(start : StopNode, goal : StopNode) -> Optional[List[Edge]]:
 
 def distance_calculator(start : StopNode, goal : StopNode) -> float:
     path = a_star(start, goal)
-    return np.sum([edge.seconds_to_travel for edge in path])
+    if path is not None:
+        return np.sum([edge.seconds_to_travel for edge in path])
+    km = haversine((start.latitude, start.longitude), (goal.latitude, goal.longitude))
+    return (km / 32) * 3600

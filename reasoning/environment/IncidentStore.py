@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
 from typing import List, Optional
+from events.event_bus import default_bus
+from events.EventNames import EventNames
 from reasoning.environment.Environment import Environment
 from reasoning.models.incident import Incident, TimeStampedIncident
 
@@ -11,6 +13,7 @@ class IncidentStore:
 
     def add_incident(self, incident: TimeStampedIncident):
         self._incidents.append(incident)
+        default_bus.emit(EventNames.INCIDENT_ADDED)
 
     def get_incidents(self, trip_id: Optional[int] = None, date: Optional[datetime] = None):
         incidents = list(self._incidents)

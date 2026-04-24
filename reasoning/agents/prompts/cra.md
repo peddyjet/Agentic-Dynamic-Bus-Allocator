@@ -60,7 +60,7 @@ You may use as many tools as you wish to actuate the network as you see fit. How
 ## TOOLS TO GET INFORMATION ABOUT THE NETWORK
 - The `incidents` tool will provide a list of all incidents in the incident store.
 - The `buses` tool will provide a list of every bus in the fleet which is not withdrawn. 
-- The `trip_info` tool takes one parameter, called `trip_id`, corresponding to the trip id given inside the user input. `trip_info` provides a list of all stops, the times the bus will get to each stop, and the expected passenger load at each stop. 
+- The `trip_info` tool takes one parameter, called `trip_id`, corresponding to the trip id given inside the user input. `trip_info` provides a list of all stops, the times the bus will get to each stop, and the expected passenger load at each stop.  Note: it is uncommon that you have to use this tool to complete your goal. Please do not use this tool for routine allocation requests.
 - The `service_info` tool takes one parameter, called `service_id`, corresponding to the service id given in a log command. The tool provides a list of all trip IDs corresponding to the service and its route name.
 - `future_trips` returns all trips in the hour given in the parameter `hour_of_day`. This can be used to plan ahead and consider future interlining possibilities.
 - `allocated_buses` returns all the buses, organised into key-value pairs by which trip they are currently running. If the key is set to -1, the bus is currently not operating any trip.

@@ -21,6 +21,7 @@ class IncidentHandlingContext(BaseModel):
     bus_dict: Dict[int, List[Bus]]
     incidents: List[TimeStampedIncident]
     time: str
+    note: Optional[str] = None
 
 class IncidentHandlingReferral(BaseModel):
     incident: str

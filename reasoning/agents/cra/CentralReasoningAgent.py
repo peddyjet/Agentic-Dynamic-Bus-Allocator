@@ -35,8 +35,7 @@ class CentralReasoningAgent(QueueAgent):
         cra_input = CRAInput(content=f"[ALLOX] {" ".join(str(i) for i in trip_ids)}", time=time.isoformat())
         prompt = json.dumps(cra_input.model_dump())
         future = self._create_future()
-        self._queue.put_nowait(("step", prompt, future))
-        self._ensure_worker_running()
+        self._enqueue(("step", prompt, future))
         return future
 
     def send_log(self, log : str, time: datetime, by_agent : bool = False):
@@ -44,16 +43,14 @@ class CentralReasoningAgent(QueueAgent):
         cra_input = CRAInput(content=f"[{'LOG' if not by_agent else 'REPORT'}] {log}", time=time.isoformat())
         prompt = json.dumps(cra_input.model_dump())
         future = self._create_future()
-        self._queue.put_nowait(("step", prompt, future))
-        self._ensure_worker_running()
+        self._enqueue(("step", prompt, future))
         return future
 
     def reject(self, reason: CRAReject, trip_id: int):
         self._log_message(f"Received rejection: {reason} for trip {trip_id}")
         name = str(reason).format(trip_id=trip_id)
         future = self._create_future()
-        self._queue.put_nowait(("step", name, future))
-        self._ensure_worker_running()
+        self._enqueue(("step", name, future))
         return future
 
     def __incident_tool(self):

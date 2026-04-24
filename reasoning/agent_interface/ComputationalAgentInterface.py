@@ -1,6 +1,9 @@
+import threading
 from datetime import timedelta
 from typing import List, Dict
 import asyncio
+from events.event_bus import default_bus
+from events.EventNames import EventNames
 from reasoning.agents.QueueAgent import QueueAgent
 from reasoning.agents.AgentPool import AgentPool
 from reasoning.agents.asa.AllocationSubAgent import AllocationSubAgent
@@ -9,6 +12,7 @@ from reasoning.agents.ihsa.IncidentHandlingSubAgent import IncidentHandlingSubAg
 from reasoning.agents.prompts.asa_rejects import CAPACITY_ERROR_THRESHOLD, ASAReject
 from reasoning.agents.prompts.cra_rejects import CRAReject
 from reasoning.agents.prompts.ihsa_rejects import IHSAReject
+from reasoning.environment.IncidentStore import IncidentStore
 from reasoning.models.agent_exposed_data import AgentExposedData
 from reasoning.models.incident import Incident, TimeStampedIncident
 from reasoning.models.inputs import SimplifiedAllocationContext, IncidentHandlingReferral
@@ -31,11 +35,7 @@ class ComputationalAgentInterface:
         self._asa_pool = asa_pool
         self._ihsa_pool = ihsa_pool
         self._cra = cra
-
-        # Instead of instantly delegating agents, we wait until after the previous agent has finished. This is to prevent
-        # tools from lagging.
-        self._delegation_requests = []
-        pass
+        self._deploy_lock = threading.Lock()
 
     """
     The following functions are used to interact with the agentic system, as a human or simulator.
@@ -72,13 +72,12 @@ class ComputationalAgentInterface:
         while self._cra.is_working() or self._asa_pool.any_working() or self._ihsa_pool.any_working():
             await asyncio.sleep(0.05)
 
-    def flush_delegation_requests(self):
+    def get_incident_store(self) -> IncidentStore:
         """
-        Flushes the delegation requests, resulting in them being processed.
+        Retrieves the incident store associated with this computational agent interface.
+        :return: The incident store
         """
-        for request in self._delegation_requests:
-            request()
-        self._delegation_requests = []
+        return self._data.incident_store()
 
     """
     The following functions are used to interact with other agents, and are called through programmatic tools.
@@ -96,11 +95,9 @@ class ComputationalAgentInterface:
         trip = self._data.environment().trips.get(trip_id)
         if trip is None:
             return IHSAReject.TripDoesntExist if not is_cra else CRAReject.TripDoesntExist
-        def step():
-            self._asa_pool.step(SimplifiedAllocationContext(trip_id=trip_id,
-                                                            time=self._data.environment().current_time.isoformat(),
-                                                            note=note))
-        self._delegation_requests.append(step)
+        self._asa_pool.step(SimplifiedAllocationContext(trip_id=trip_id,
+                                                        time=self._data.environment().current_time.isoformat(),
+                                                        note=note))
         return None
 
     def _step_ihsa(self, referral : IncidentHandlingReferral):
@@ -109,18 +106,14 @@ class ComputationalAgentInterface:
         This is to be provisioned exclusively to the CRA.
         :param referral: The incident referral to give to the IHSA
         """
-        def step():
-            self._ihsa_pool.step(referral)
-        self._delegation_requests.append(step)
+        self._ihsa_pool.step(referral)
 
     def _cra_report(self, report : str):
         """
         Reports an incident to the CRA, given by a subagent.
         :param report: The report to submit
         """
-        def step():
-            self._cra.send_log(report, self._data.environment().current_time, True)
-        self._delegation_requests.append(step)
+        self._cra.send_log(report, self._data.environment().current_time, True)
 
     """
     The following functions are used to interact with the environment, and are called by programmatic tools inside the 
@@ -133,16 +126,18 @@ class ComputationalAgentInterface:
         :param bus_id: The bus ID to deploy
         :param trip_id: The trip ID to deploy to
         """
-        validation = self.__validate_bus_allocation(bus_id, trip_id)
-        if validation[0] is not None: return validation
+        with self._deploy_lock:
+            validation = self.__validate_bus_allocation(bus_id, trip_id)
+            if validation[0] is not None: return validation
 
-        bus = self._data.environment().buses[bus_id]
+            bus = self._data.environment().buses[bus_id]
 
-        if bus.current_trip_id_queue is None:
-            bus.current_trip_id_queue = []
-        
-        bus.current_trip_id_queue.append(trip_id)
+            if bus.current_trip_id_queue is None:
+                bus.current_trip_id_queue = []
 
+            bus.current_trip_id_queue.append(trip_id)
+
+        default_bus.emit(EventNames.ENVIRONMENT_CHANGED)
         return None, None
 
     def _remove_bus(self, bus_id : int, trip_id : int):
@@ -158,7 +153,10 @@ class ComputationalAgentInterface:
             return IHSAReject.BusDoesntExist
         if trip is None:
             return IHSAReject.TripDoesntExist
+        if not bus.current_trip_id_queue or trip_id not in bus.current_trip_id_queue:
+            return IHSAReject.BusNotOnTrip
         bus.current_trip_id_queue.remove(trip_id)
+        default_bus.emit(EventNames.ENVIRONMENT_CHANGED)
         return None
 
     def _withdraw_bus(self, bus_id : int):
@@ -173,6 +171,7 @@ class ComputationalAgentInterface:
         bus.current_trip_id_queue = []
         bus.faults.append(self._data.environment().current_time.isoformat() +
                           " Bus withdrawn by IHSA. Expires in 24 hours from the time of withdrawal.")
+        default_bus.emit(EventNames.ENVIRONMENT_CHANGED)
         return None
 
     def _cancel_trip(self, trip_id : int):
@@ -189,6 +188,7 @@ class ComputationalAgentInterface:
             if trip_id in bus.current_trip_id_queue:
                 bus.current_trip_id_queue.remove(trip_id)
 
+        default_bus.emit(EventNames.ENVIRONMENT_CHANGED)
         return None
     
     def _add_log(self, incident : Incident):
@@ -248,7 +248,7 @@ class ComputationalAgentInterface:
         """
 
         agents : Dict[str, QueueAgent] = \
-            {"cra": self._cra, **self._asa_pool.demand_all_agents(), **self._ihsa_pool.demand_all_agents()}
+            {self._cra.get_name(): self._cra, **self._asa_pool.demand_all_agents(), **self._ihsa_pool.demand_all_agents()}
 
         return {agent_name: agent.queue_size() for agent_name, agent in agents.items()}
 

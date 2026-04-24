@@ -13,6 +13,7 @@ class StopNode(BaseModel):
     longitude: float
     is_depot : bool
     edges: List[Edge]
+    density: float = 1.0
 
 Edge.model_rebuild()
 StopNode.model_rebuild()

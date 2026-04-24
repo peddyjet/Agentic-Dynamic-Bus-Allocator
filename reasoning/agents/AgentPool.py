@@ -24,7 +24,6 @@ class AgentPool(Generic[T, Y]):
                 best_fit = agent
                 best_fit_score = score
 
-        print(f"[POOL] decided on agent {best_fit.get_name()} with score {best_fit_score}")
         self._step(best_fit, prompt)
 
     def demand_agent(self, agent_name : str):
