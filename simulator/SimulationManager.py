@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from typing import Optional, List
 from events.EventNames import EventNames
 from events.event_bus import default_bus
-from reasoning.agent_interface.ComputationalAgentInterface import ComputationalAgentInterface
+from reasoning.agent_interface.BusAllocatorProtocol import BusAllocatorProtocol
 from reasoning.agents.tools.distance_calculator import distance_calculator
 from reasoning.environment.Environment import Environment
 from reasoning.models.bus import Bus
@@ -29,14 +29,14 @@ TRAFFIC_DELAY_STEP_BASE = 40.0
 DEFAULT_AVG_PAX = 8.0
 PAX_DEMAND_VARIATION_MIN = 0.5
 PAX_DEMAND_VARIATION_MAX = 1.5
-PAX_DEMAND_SCALE = 0.5
+PAX_DEMAND_SCALE = 0.3
 ALIGHT_FRACTION_MIN = 0.1
 ALIGHT_FRACTION_MAX = 0.4
 SURGE_TRIGGER_SALT = 1
 SURGE_PARAMS_SALT = 2
 
 class SimulationManager:
-    def __init__(self, environment: Environment, cai: ComputationalAgentInterface,
+    def __init__(self, environment: Environment, cai: BusAllocatorProtocol,
                  step_seconds: int = 60, seed: int = 36):
         self._environment = environment
         self._cai = cai
@@ -46,6 +46,7 @@ class SimulationManager:
         self._seed = seed
         self._last_allocation_time = environment.current_time
         self._last_loading_update = environment.current_time
+        self._stranding_notified: set = set()
 
         self.__seed_initial_passenger_loadings()
 
@@ -118,9 +119,11 @@ class SimulationManager:
             for cp in trip.calling_points:
                 stop = self._environment.stops.get(cp.stop.id)
                 density = stop.density if stop is not None else 1.0
+                peak = PEAK_MULTIPLIERS.get(cp.timestamp.hour, 1.0)
                 rng = self.__rng(cp.stop.id, trip.id)
                 for _ in range(INITIAL_LOADING_SAMPLES):
-                    cp.passenger_loadings.append(round(rng.uniform(INITIAL_PAX_MIN, INITIAL_PAX_MAX) * density))
+                    base = DEFAULT_AVG_PAX * density * peak * rng.uniform(PAX_DEMAND_VARIATION_MIN, PAX_DEMAND_VARIATION_MAX) * PAX_DEMAND_SCALE
+                    cp.passenger_loadings.append(round(base))
 
     def __apply_traffic_variation(self):
         current_time = self._environment.current_time
@@ -160,7 +163,8 @@ class SimulationManager:
                     cp.passenger_loadings.pop(0)
 
     def __assess_agent_business(self, agent: str, queue_depth: int):
-        self._force_pause = any(v > 0 for v in self._cai.get_system_status().values())
+        system_status = self._cai.get_system_status()
+        self._force_pause = any(v > 0 for v in system_status.values()) if system_status else queue_depth > 0
 
     def __sync_bus(self, bus: Bus, current_time: datetime):
         original_stop = bus.current_stop_id
@@ -179,6 +183,7 @@ class SimulationManager:
             # If the trip has (or should have) finished,
             if current_time >= trip.end_time(as_date=True) + delay:
                 queue.pop(0)
+                self._stranding_notified.discard((bus.id, trip.id))
                 bus.current_stop_id = trip.calling_points[-1].stop.id
                 if queue:
                     # Find how long it will take to deadrun to the start of the next trip, and from it calculate the delay
@@ -222,6 +227,12 @@ class SimulationManager:
         if cp is None:
             return
 
+        cp.passenger_loadings.append(round(cp.waiting_passengers))
+        if len(cp.passenger_loadings) > MAX_LOADING_HISTORY:
+            cp.passenger_loadings.pop(0)
+
+        default_bus.emit(EventNames.DELAY_RECORDED, delay_seconds=bus.delay_seconds)
+
         rng = self.__rng(bus.id, stop_id)
         alight_fraction = rng.uniform(ALIGHT_FRACTION_MIN, ALIGHT_FRACTION_MAX)
         bus.current_passengers = round(max(0.0, bus.current_passengers * (1.0 - alight_fraction)))
@@ -231,13 +242,17 @@ class SimulationManager:
         bus.current_passengers += boarded
         cp.waiting_passengers = max(0.0, cp.waiting_passengers - boarded)
 
-        if cp.waiting_passengers > 0:
+        if cp.waiting_passengers > 0 and bus.current_passengers >= bus.capacity:
             left_behind = round(cp.waiting_passengers)
-            self._cai.send_log(
-                f"Bus {bus.reg_plate} (ID {bus.id}) left behind {left_behind} passenger(s) at "
-                f"{stop.name} (Stop ID {stop_id}) on route {trip.service.route_name} "
-                f"(Trip ID {trip.id}). Bus was at capacity ({bus.capacity})."
-            )
+            key = (bus.id, trip.id)
+            if key not in self._stranding_notified:
+                self._stranding_notified.add(key)
+                default_bus.emit(EventNames.ABANDONED_PASSENGER, count=left_behind)
+                self._cai.send_log(
+                    f"Bus {bus.reg_plate} (ID {bus.id}) left behind {left_behind} passenger(s) at "
+                    f"{stop.name} (Stop ID {stop_id}) on route {trip.service.route_name} "
+                    f"(Trip ID {trip.id}). Bus was at capacity ({bus.capacity})."
+                )
 
     @staticmethod
     def __find_stop_at_time(trip: Trip, current_time: datetime, delay: timedelta = timedelta(0)):
@@ -259,7 +274,7 @@ class SimulationManager:
             else None
         )
 
-        if current_stop is None or current_stop.is_depot:
+        if current_stop is None:
             travel_seconds = 0.0
         else:
             travel_seconds = distance_calculator(current_stop, first_stop)

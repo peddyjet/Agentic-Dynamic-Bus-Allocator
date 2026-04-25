@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QTextEdit, QPushButton
 import qtawesome as qta
 from events.event_bus import default_bus
 from events.EventNames import EventNames
-from reasoning.agent_interface.ComputationalAgentInterface import ComputationalAgentInterface
+from reasoning.agent_interface.BusAllocatorProtocol import BusAllocatorProtocol
 from simulator.SimulationManager import SimulationManager
 from simulator.gui.gui_util import icon_label, find_relevant_icon
 
@@ -14,7 +14,7 @@ class RightPanel(QWidget):
     _agent_status_changed = pyqtSignal(str, int)  # agent name, queue_depth
     _time_changed = pyqtSignal()
 
-    def __init__(self, cai: ComputationalAgentInterface, sim_manager: SimulationManager, parent=None):
+    def __init__(self, cai: BusAllocatorProtocol, sim_manager: SimulationManager, parent=None):
         super().__init__(parent)
         self.setFixedWidth(220)
         layout = QVBoxLayout(self)

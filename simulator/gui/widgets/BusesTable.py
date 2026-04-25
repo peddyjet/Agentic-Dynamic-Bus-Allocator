@@ -56,7 +56,7 @@ class BusesTable(QTableWidget):
             return f"Bus {bus_id} not found."
 
         trips = ", ".join(str(t) for t in bus.current_trip_id_queue) if bus.current_trip_id_queue else "Unallocated"
-        stop = str(bus.current_stop_id) if bus.current_stop_id is not None else "Currently in Depot"
+        stop = str(bus.current_stop_id) if bus.current_stop_id is not None else "In Transit"
         faults = "\n  ".join(bus.faults) if bus.faults else "None"
 
         return (
@@ -89,7 +89,7 @@ class BusesTable(QTableWidget):
                 if bus.current_trip_id_queue else "Unallocated"
 
             stop = str(self._environment.stops[bus.current_stop_id].name) \
-                if bus.current_stop_id is not None else "Currently in Depot"
+                if bus.current_stop_id is not None else "In Transit"
 
             passengers = f"{int(bus.current_passengers)} / {bus.capacity}"
 

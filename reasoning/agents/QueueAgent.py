@@ -1,5 +1,6 @@
 import asyncio
 import threading
+import time
 import traceback
 from typing import Callable, Any, List, Type
 from camel.agents import ChatAgent
@@ -50,16 +51,18 @@ class QueueAgent:
             try:
                 if self._stateless:
                     self._agent.reset()
+                step_start_time = time.monotonic()
                 raw_result = self._agent.step(payload() if callable(payload) else payload, self._agent_response)
+                duration_ms = (time.monotonic() - step_start_time) * 1000
                 result = getattr(raw_result.msgs[0], "parsed", None) or getattr(raw_result.msgs[0], "content", None) or raw_result
                 if not future.done():
                     future.set_result(result)
+                default_bus.emit(EventNames.STEP_COMPLETE, agent=self._name, duration_ms=duration_ms)
                 self.on_step_complete(result)
             except Exception as e:
-                if not future.done():
-                    future.set_exception(e)
-                self._log_message(f"Error processing task: {e}")
-                self._log_message(traceback.format_exc())
+                self._log_message(f"Agent error, retrying: {e}")
+                await self._queue.put((kind, payload, future))
+                self._pending += 1
             finally:
                 self._queue.task_done()
                 self._busy = False

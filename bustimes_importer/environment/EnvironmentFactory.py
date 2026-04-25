@@ -21,14 +21,14 @@ class EnvironmentFactory:
     England) uses the code "BRYL".
     """
 
-    def __init__(self, national_operator_code: str, date : datetime, uri : str = "https://bustimes.org/api/", log : bool = False):
+    def __init__(self, national_operator_code: str, date : datetime, depot_lat : float, depot_lon : float, uri : str = "https://bustimes.org/api/", log : bool = False):
         self._noc = national_operator_code
         self._uri = uri
         self._date = date
         self.__formatted_time = self._date.strftime("%Y-%m-%d")
         self.log = log
 
-        self._environment = construct_environment(self._get_vehicles(), self._get_trips(), date, log)
+        self._environment = construct_environment(self._get_vehicles(), self._get_trips(), date, depot_lat, depot_lon, log)
         self._vehicle_journeys = self._get_vehicle_journeys()
 
         if self.log:

@@ -6,3 +6,8 @@ class EventNames(Enum):
     INCIDENT_ADDED = "incident_added"
     AGENT_BUSY = "agent_busy"
     LOG_MESSAGE = "log_message"
+    STEP_COMPLETE = "step_complete"
+    ABANDONED_PASSENGER = "abandoned_passenger"
+    INTERLINED = "interlined"
+    TRIP_CANCELLED = "trip_cancelled"
+    DELAY_RECORDED = "delay_recorded"

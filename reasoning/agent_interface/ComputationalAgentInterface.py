@@ -48,6 +48,7 @@ class ComputationalAgentInterface:
         allocated_buses = self._data.environment().find_buses_on_trips()
         trips = [t.id for t in self._data.environment().trips.values()
                  if t.start_time(True) < time_threshold + self._data.environment().current_time
+                 and t.end_time(True) > self._data.environment().current_time
                  and not allocated_buses.get(t.id)]
         if len(trips) == 0: return
         self._cra.allocate_bus(trips, self._data.environment().current_time)
@@ -135,8 +136,17 @@ class ComputationalAgentInterface:
             if bus.current_trip_id_queue is None:
                 bus.current_trip_id_queue = []
 
-            bus.current_trip_id_queue.append(trip_id)
+            is_interline = len(bus.current_trip_id_queue) > 0
+            insert_at = len(bus.current_trip_id_queue)
+            for i, queued_id in enumerate(bus.current_trip_id_queue):
+                queued = self._data.environment().trips.get(queued_id)
+                if queued and trip.start_time(True) < queued.start_time(True):
+                    insert_at = i
+                    break
+            bus.current_trip_id_queue.insert(insert_at, trip_id)
 
+        if is_interline:
+            default_bus.emit(EventNames.INTERLINED)
         default_bus.emit(EventNames.ENVIRONMENT_CHANGED)
         return None, None
 
@@ -188,6 +198,7 @@ class ComputationalAgentInterface:
             if trip_id in bus.current_trip_id_queue:
                 bus.current_trip_id_queue.remove(trip_id)
 
+        default_bus.emit(EventNames.TRIP_CANCELLED)
         default_bus.emit(EventNames.ENVIRONMENT_CHANGED)
         return None
     
@@ -233,7 +244,7 @@ class ComputationalAgentInterface:
                 if queued_trip is None:
                     continue
 
-                if queued_trip.start_time() < trip.end_time() and queued_trip.end_time() > trip.start_time():
+                if queued_trip.start_time(True) < trip.end_time(True) and queued_trip.end_time(True) > trip.start_time(True):
                     return ASAReject.BusConflict, queued_trip_id
 
                 if not self.__validate_distance(queued_trip, trip, kmh=32):

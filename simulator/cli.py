@@ -2,7 +2,7 @@ from datetime import timedelta
 
 from events.EventNames import EventNames
 from events.event_bus import default_bus
-from reasoning.agent_interface.ComputationalAgentInterface import ComputationalAgentInterface
+from reasoning.agent_interface.BusAllocatorProtocol import BusAllocatorProtocol
 from reasoning.environment.Environment import Environment
 from simulator.SimulationManager import SimulationManager
 
@@ -30,7 +30,7 @@ def get_user_input(prompt = ">"):
         user_input += input("    | ")
     return user_input
 
-async def run_cli(cai : ComputationalAgentInterface, environment : Environment):
+async def run_cli(cai : BusAllocatorProtocol, environment : Environment):
     try:
         seed = int(input("Enter passenger generation seed [36]: ").strip() or "36")
     except ValueError:

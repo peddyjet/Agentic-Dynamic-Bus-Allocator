@@ -31,6 +31,8 @@ def construct_environment(
     vehicles: List[Vehicle],
     trip_instances: List[TripInstance],
     date: datetime,
+    depot_lat : float,
+    depot_lon : float,
     log: bool = False,
 ) -> Environment:
     if log:
@@ -45,6 +47,12 @@ def construct_environment(
     if log:
         print("     Converting trips to stops and services... (3d/4)")
     stops, services = __trip_instances_to_stops_and_services(trip_instances, date)
+    stops[0] = m.network_graph.StopNode(id=0,
+                                          name="Depot",
+                                          latitude=depot_lat,
+                                          longitude=depot_lon,
+                                          is_depot=True,
+                                          edges=[])
 
     if log:
         print("     Decomposing trips (3d/4)")
@@ -113,7 +121,7 @@ def __vehicle_to_bus(vehicle: Vehicle) -> m.bus.Bus:
         coach=vehicle.vehicle_type.coach,
         faults=[],
         current_trip_id_queue=[],
-        current_stop_id=None,
+        current_stop_id=0,
         height=ADDITIONAL_BUS_SPECS[vehicle.vehicle_type.name]["height"],
         id=vehicle.id,
     )

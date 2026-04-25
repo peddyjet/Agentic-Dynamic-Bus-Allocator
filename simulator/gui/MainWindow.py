@@ -1,7 +1,7 @@
 import sys
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QMainWindow, QApplication, QWidget, QVBoxLayout, QSplitter, QTabWidget, QLabel, QTextEdit, QInputDialog
-from reasoning.agent_interface.ComputationalAgentInterface import ComputationalAgentInterface
+from reasoning.agent_interface.BusAllocatorProtocol import BusAllocatorProtocol
 from reasoning.environment.Environment import Environment
 from reasoning.environment.IncidentStore import IncidentStore
 from simulator.gui.widgets.BusesTable import BusesTable
@@ -11,11 +11,13 @@ from simulator.gui.widgets.ServicesGrid import ServicesGrid
 from simulator.gui.widgets.RightPanel import RightPanel
 from simulator.SimulationManager import SimulationManager
 from simulator.gui.widgets.SystemTracebackTable import SystemTracebackTable
+from simulator.gui.widgets.PerformanceProfilerWidget import PerformanceProfilerWidget
 import qtawesome as qta
 from simulator.gui.widgets.TripsTable import TripsTable
+from profiling.PerformanceProfiler import PerformanceProfiler
 
 class MainWindow(QMainWindow):
-    def __init__(self, cai : ComputationalAgentInterface, environment : Environment, incident_store : IncidentStore, seed: int = 42):
+    def __init__(self, cai : BusAllocatorProtocol, environment : Environment, incident_store : IncidentStore, seed: int = 42, profiler: PerformanceProfiler | None = None):
         super().__init__()
 
         self._cai = cai
@@ -57,7 +59,8 @@ class MainWindow(QMainWindow):
         incidents_table.expansion_requested.connect(self._open_text_window)
         self._tabs.addTab(incidents_table, "Incidents")
 
-        self._tabs.addTab(QLabel("Performance Profiling"), "Performance Profiling")
+        profiler_tab = PerformanceProfilerWidget(profiler) if profiler is not None else QLabel("No profiler attached.")
+        self._tabs.addTab(profiler_tab, "Performance Profiling")
         v_split.addWidget(self._tabs)
 
         self._tool_table = SystemTracebackTable()
@@ -105,13 +108,13 @@ class MainWindow(QMainWindow):
         self.calling_pattern_window = win
 
     @staticmethod
-    def start(cai : ComputationalAgentInterface, environment : Environment):
+    def start(cai : BusAllocatorProtocol, environment : Environment, profiler: PerformanceProfiler | None = None):
         app = QApplication(sys.argv)
         app.setWindowIcon(qta.icon('mdi.bus', color='#51F50F'))
         seed, ok = QInputDialog.getInt(None, "Simulation Seed", "Enter passenger generation seed:", value=36, min=0)
         if not ok:
             seed = 36
-        window = MainWindow(cai, environment, cai.get_incident_store(), seed=seed)
+        window = MainWindow(cai, environment, cai.get_incident_store(), seed=seed, profiler=profiler)
         window.setWindowIcon(qta.icon('mdi.bus', color='#51F50F'))
         window.show()
         sys.exit(app.exec())

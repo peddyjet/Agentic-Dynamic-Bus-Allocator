@@ -103,6 +103,7 @@ You must always format your response as a JSON object with the following schema:
 - You must ensure that if a trip is being interlined, it has enough time to travel from its previous trip's end stop to the start of the new trip.
 - You must always check the current state of a bus, including the details of what trips it is allocated to, before making any decisions.
 - If a note is received, it must be taken seriously and acted upon if viable. If you choose to ignore the note despite this, please justify why in the rationale.
+- Average passenger loads are calculated via snapshots taken throughout the day. There may be up to four times more passengers at peak times than off-peak.
 
 # FAILURE CONDITIONS
 - A bus which does not exist is allocated to a route
