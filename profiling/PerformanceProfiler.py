@@ -26,6 +26,7 @@ class PerformanceProfiler:
         self.__interline_count = 0
 
         self.__cancellation_count = 0
+        self.__no_show_count = 0
 
         self.__delay_stats: PerformanceProfiler.Stats = PerformanceProfiler.Stats(min=0, max=0, count=0, mean=0, m2=0)
         self.__delay_sum = 0.0
@@ -35,18 +36,22 @@ class PerformanceProfiler:
         default_bus.subscribe(EventNames.INTERLINED, self.__on_interlined)
         default_bus.subscribe(EventNames.TRIP_CANCELLED, self.__on_trip_cancelled)
         default_bus.subscribe(EventNames.DELAY_RECORDED, self.__on_delay_recorded)
+        default_bus.subscribe(EventNames.NO_SHOW, self.__on_no_show)
 
     def get_speed_stats(self): return self.__speed_stats
     def get_abandonment_stats(self): return self.__abandonment_stats
     def get_abandonment_sum(self): return self.__abandonment_sum
     def get_interline_count(self): return self.__interline_count
     def get_cancellation_count(self): return self.__cancellation_count
+    def get_no_show_count(self): return self.__no_show_count
     def get_delay_stats(self): return self.__delay_stats
     def get_delay_sum(self): return self.__delay_sum
 
     def __on_interlined(self): self.__interline_count += 1
 
-    def __on_trip_cancelled(self): self.__cancellation_count += 1
+    def __on_trip_cancelled(self, trip_id: int = None): self.__cancellation_count += 1
+
+    def __on_no_show(self): self.__no_show_count += 1
 
     def __on_delay_recorded(self, delay_seconds: float):
         self.__delay_sum += delay_seconds

@@ -11,7 +11,7 @@ from reasoning.models.timetabling import Trip
 from simulator.surge_generator import surge_generator
 
 PEAK_MULTIPLIERS = {
-        7: 3.0, 8: 4.0, 9: 2.0,
+        6: 1.25, 7: 3.0, 8: 3.5, 9: 2.0,
         12: 1.5, 13: 1.5,
         15: 2.5, 16: 3.5, 17: 2.5, 18: 2.5,
         19: 1.5, 20: 1.0, 21: 0.75, 22: 0.5, 23: 1.25,
@@ -26,12 +26,12 @@ INITIAL_PAX_MIN = 2.0
 INITIAL_PAX_MAX = 20.0
 TRAFFIC_DELAY_STD = 4.0
 TRAFFIC_DELAY_STEP_BASE = 40.0
-DEFAULT_AVG_PAX = 8.0
+DEFAULT_AVG_PAX = 6.0
 PAX_DEMAND_VARIATION_MIN = 0.5
 PAX_DEMAND_VARIATION_MAX = 1.5
 PAX_DEMAND_SCALE = 0.3
-ALIGHT_FRACTION_MIN = 0.1
-ALIGHT_FRACTION_MAX = 0.4
+ALIGHT_FRACTION_MIN = 0
+ALIGHT_FRACTION_MAX = 0.75
 SURGE_TRIGGER_SALT = 1
 SURGE_PARAMS_SALT = 2
 
@@ -47,10 +47,13 @@ class SimulationManager:
         self._last_allocation_time = environment.current_time
         self._last_loading_update = environment.current_time
         self._stranding_notified: set = set()
+        self._cancelled_trip_ids: set = set()
+        self._no_show_notified: set = set()
 
         self.__seed_initial_passenger_loadings()
 
         default_bus.subscribe(EventNames.AGENT_BUSY, self.__assess_agent_business)
+        default_bus.subscribe(EventNames.TRIP_CANCELLED, self.__on_trip_cancelled)
 
     def is_paused(self):
         return self._paused or self._force_pause
@@ -73,6 +76,7 @@ class SimulationManager:
 
         # Accumulate waiting passengers at calling points every tick
         self.__generate_waiting_passengers()
+        self.__check_no_shows()
 
         # Snapshot waiting passengers into loading history once per hour
         if self._environment.current_time - self._last_loading_update >= LOADING_SNAPSHOT_INTERVAL:
@@ -162,6 +166,29 @@ class SimulationManager:
                 if len(cp.passenger_loadings) > MAX_LOADING_HISTORY:
                     cp.passenger_loadings.pop(0)
 
+    def __on_trip_cancelled(self, trip_id: int):
+        self._cancelled_trip_ids.add(trip_id)
+
+    def __check_no_shows(self):
+        allocated_trip_ids = {
+            trip_id
+            for bus in self._environment.buses.values()
+            if bus.current_trip_id_queue
+            for trip_id in bus.current_trip_id_queue
+        }
+        
+        for trip in self._environment.trips.values():
+            if trip.id in self._no_show_notified:
+                continue
+                
+            if trip.id in self._cancelled_trip_ids:
+                continue
+                
+            if self._environment.current_time >= trip.start_time(as_date=True):
+                if trip.id not in allocated_trip_ids:
+                    self._no_show_notified.add(trip.id)
+                    default_bus.emit(EventNames.NO_SHOW)
+
     def __assess_agent_business(self, agent: str, queue_depth: int):
         system_status = self._cai.get_system_status()
         self._force_pause = any(v > 0 for v in system_status.values()) if system_status else queue_depth > 0
@@ -183,6 +210,7 @@ class SimulationManager:
             # If the trip has (or should have) finished,
             if current_time >= trip.end_time(as_date=True) + delay:
                 queue.pop(0)
+                self._no_show_notified.add(trip.id)
                 self._stranding_notified.discard((bus.id, trip.id))
                 bus.current_stop_id = trip.calling_points[-1].stop.id
                 if queue:

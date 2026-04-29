@@ -11,3 +11,4 @@ class EventNames(Enum):
     INTERLINED = "interlined"
     TRIP_CANCELLED = "trip_cancelled"
     DELAY_RECORDED = "delay_recorded"
+    NO_SHOW = "no_show"

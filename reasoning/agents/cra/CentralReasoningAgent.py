@@ -20,7 +20,7 @@ class CentralReasoningAgent(QueueAgent):
             model=model,
             tools=environment_tools(self) + [allocated_buses_tool(self),
                                              self.__incident_tool(),
-                                             self.__allocate_bus_tool(),
+                                             self.__allocate_buses_tool(),
                                              self.__log_incident_tool()]
         ), on_decided_step_handlers=[], name="CRA")
         self._environment = data.environment
@@ -64,20 +64,29 @@ class CentralReasoningAgent(QueueAgent):
             return self._incidents().get_incidents() or "no incidents found"
         return incidents
 
-    def __allocate_bus_tool(self):
+    def __allocate_buses_tool(self):
         @FunctionTool
-        def allocate_bus(trip_id : int, notes : str = ""):
+        def allocate_buses(trip_ids : str, notes : str = ""):
             """
-            Will delegate the allocation of a trip to an Allocation Subagent, passing notes as additional context.
-            :param trip_id: The ID of the trip to allocate
+            Will delegate the allocation of all trips specified to the Allocation Subagent Pool, passing notes as additional context.
+            :param trip_ids: The IDs of the trip to allocate, separated by commas with no spaces in between.
             :param notes: Additional context to pass to the Allocation Subagent
             :return Nothing if everything went well, otherwise an error message
             """
-            self._log_message(f"Invoked allocate_bus with trip_id {trip_id} and notes {notes}")
-            err = self.refer_asa(trip_id, True, notes)
-            if err is not None: return str(err).format(trip_id=trip_id)
+            self._log_message(f"Invoked allocate_buses with trip_ids {trip_ids} and notes {notes}")
+            trips = []
+            for trip_str in trip_ids.split(','):
+                try:
+                    trip_id = int(trip_str.strip())
+                    trips.append(trip_id)
+                except:
+                    return str(CRAReject.TripsParsedIncorrectly).format(trip_ids=trip_ids)
+
+            for trip_id in trips:
+                err = self.refer_asa(trip_id, True, notes)
+                if err is not None: return str(err).format(trip_id=trip_id)
             return "success"
-        return allocate_bus
+        return allocate_buses
 
 
     def __log_incident_tool(self):

@@ -73,7 +73,8 @@ class PerformanceProfilerWidget(QWidget):
 
         self._stats_changed.connect(self._refresh)
         for event in [EventNames.STEP_COMPLETE, EventNames.ABANDONED_PASSENGER,
-                      EventNames.INTERLINED, EventNames.TRIP_CANCELLED, EventNames.DELAY_RECORDED]:
+                      EventNames.INTERLINED, EventNames.TRIP_CANCELLED, EventNames.DELAY_RECORDED,
+                      EventNames.NO_SHOW]:
             default_bus.subscribe(event, lambda *a, **k: self._stats_changed.emit())
 
         self._refresh()
@@ -121,6 +122,7 @@ class PerformanceProfilerWidget(QWidget):
 
         add_count_row("Interlining", self._profiler.get_interline_count())
         add_count_row("Cancellations", self._profiler.get_cancellation_count())
+        add_count_row("No Shows", self._profiler.get_no_show_count())
         add_stats_row(
             "Abandoned Passengers (per incident)",
             self._profiler.get_abandonment_stats().count,

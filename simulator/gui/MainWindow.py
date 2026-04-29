@@ -1,6 +1,6 @@
 import sys
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QMainWindow, QApplication, QWidget, QVBoxLayout, QSplitter, QTabWidget, QLabel, QTextEdit, QInputDialog
+from PyQt6.QtWidgets import QMainWindow, QApplication, QWidget, QVBoxLayout, QSplitter, QTabWidget, QLabel, QTextEdit
 from reasoning.agent_interface.BusAllocatorProtocol import BusAllocatorProtocol
 from reasoning.environment.Environment import Environment
 from reasoning.environment.IncidentStore import IncidentStore
@@ -108,13 +108,12 @@ class MainWindow(QMainWindow):
         self.calling_pattern_window = win
 
     @staticmethod
-    def start(cai : BusAllocatorProtocol, environment : Environment, profiler: PerformanceProfiler | None = None):
+    def start(cai : BusAllocatorProtocol, environment : Environment, profiler: PerformanceProfiler | None = None, seed: int = 36):
         app = QApplication(sys.argv)
         app.setWindowIcon(qta.icon('mdi.bus', color='#51F50F'))
-        seed, ok = QInputDialog.getInt(None, "Simulation Seed", "Enter passenger generation seed:", value=36, min=0)
-        if not ok:
-            seed = 36
         window = MainWindow(cai, environment, cai.get_incident_store(), seed=seed, profiler=profiler)
         window.setWindowIcon(qta.icon('mdi.bus', color='#51F50F'))
         window.show()
+        window.activateWindow()
+        window.raise_()
         sys.exit(app.exec())

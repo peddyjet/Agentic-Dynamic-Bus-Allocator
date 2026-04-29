@@ -136,6 +136,7 @@ class ComputationalAgentInterface:
             if bus.current_trip_id_queue is None:
                 bus.current_trip_id_queue = []
 
+            trip = self._data.environment().trips[trip_id]
             is_interline = len(bus.current_trip_id_queue) > 0
             insert_at = len(bus.current_trip_id_queue)
             for i, queued_id in enumerate(bus.current_trip_id_queue):
@@ -198,7 +199,7 @@ class ComputationalAgentInterface:
             if trip_id in bus.current_trip_id_queue:
                 bus.current_trip_id_queue.remove(trip_id)
 
-        default_bus.emit(EventNames.TRIP_CANCELLED)
+        default_bus.emit(EventNames.TRIP_CANCELLED, trip_id=trip_id)
         default_bus.emit(EventNames.ENVIRONMENT_CHANGED)
         return None
     

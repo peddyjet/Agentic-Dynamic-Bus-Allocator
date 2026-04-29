@@ -1,5 +1,8 @@
+import sys
 import datetime
 import asyncio
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 from dotenv import load_dotenv
 from camel.models import ModelFactory
 from camel.types import ModelPlatformType, ModelType
@@ -71,7 +74,11 @@ async def main():
             await run_cli(cai, environment)
             break
         if choice == "simulator":
-            MainWindow.start(cai, environment, profiler)
+            try:
+                seed = int(input("Enter passenger generation seed (default 36): ") or "36")
+            except ValueError:
+                seed = 36
+            MainWindow.start(cai, environment, profiler, seed=seed)
             break
         print("Invalid option. Please try again.")
         print()
