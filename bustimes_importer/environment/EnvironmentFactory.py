@@ -95,7 +95,7 @@ class EnvironmentFactory:
         return [trip for trip in final_results if trip is not None]
 
     def _get_trip(self, trip_id : int) -> TripInstance | None:
-        trip_raw = requests.get(self._uri + f"trips/{trip_id}")
+        trip_raw = requests.get(self._uri + f"trips/{trip_id}/")
         trip_raw.raise_for_status()
         trip_json = trip_raw.json()
         if trip_json["service"]["id"] is None:
