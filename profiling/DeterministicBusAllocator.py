@@ -88,8 +88,11 @@ class DeterministicBusAllocator:
         with self._lock:
             if best_bus.current_trip_id_queue is None:
                 best_bus.current_trip_id_queue = []
+            is_interline = len(best_bus.current_trip_id_queue) > 0
             best_bus.current_trip_id_queue.append(trip.id)
 
+        if is_interline: 
+            default_bus.emit(EventNames.INTERLINED)
         default_bus.emit(EventNames.ENVIRONMENT_CHANGED)
 
     def __heuristics(self, bus: Bus, trip: Trip):
